@@ -237,8 +237,10 @@ rw_status read_last_metadata(void) { // TODO: update offsets, flags etc.
   }
 
   metadata_t metadata_buffer_prev;
-  size_t ff_byte_counter{0};
+  size_t ff_byte_counter;
+  uint8_t *ptr_copy = (uint8_t *) &metadata_buffer_prev;
   while (metadata_info.sector_num < sectors_amount_for_metadata) {
+    ff_byte_counter = 0; // clear current 0xFF bytes counter
     // read data
     if (
       !read_bytes(
@@ -250,20 +252,19 @@ rw_status read_last_metadata(void) { // TODO: update offsets, flags etc.
     ) {
       return rw_status::READ_FAILED;
     }
-    // save last data
-    memcpy(&metadata_buffer_prev, &metadata_buffer, sizeof(metadata_t));
-    // check data
+    // check and save last data
     for (
       uint8_t *ptr = (uint8_t *) &metadata_buffer;
       ptr < (uint8_t *) (&metadata_buffer.crc8 + 1);
       ptr++
     ) {
-      if (*ptr == 0xFF) { // FIXME: нас интересуют пустые ячейки
+      if (*ptr == 0xFF) {
         ff_byte_counter++;
       }
+      *(ptr_copy++) = *ptr; // copy metadata
     }
     if (ff_byte_counter == sizeof(metadata_t)) {
-      // found clean memory cells
+      // found clean memory cells, relevant data is places into `metadata_buffer_prev`
       break;
     }
     // update metadata info
@@ -272,10 +273,12 @@ rw_status read_last_metadata(void) { // TODO: update offsets, flags etc.
       if (++metadata_info.sector_num >= sectors_amount_for_metadata) {
         break;
       }
+      // work with next sector, clear offset
       metadata_info.offset = 0;
     }
   }
   // FIXME: если были считаны первые ячейки памяти, то в metadata_buffer_prev - мусор
+  // TODO: проверять offset и sector_num, чтобы избежать проблемы выше
   // check for reaching the end of available metadata memory
   if (
     (metadata_info.sector_num >= sectors_amount_for_metadata) && // last available sector
