@@ -224,9 +224,14 @@ Storage::rw_status Storage::update_metadata(void) {
       return rw_status;
     }
   }
+  return rw_status::OK; // metadata was updated
 }
 
-rw_status read_last_metadata(void) { // TODO: update offsets, flags etc.
+Storage::rw_status Storage::read_last_metadata(void) { // TODO: update offsets, flags etc.
+  metadata_t metadata_buffer_prev;
+  size_t ff_byte_counter;
+  uint8_t *ptr, *ptr_copy;
+
   if (inner_flags.data_is_read) {
     // metadata already has been read
     return rw_status::OK;
@@ -236,9 +241,6 @@ rw_status read_last_metadata(void) { // TODO: update offsets, flags etc.
     return rw_status::NULLPTR_ERROR;
   }
 
-  metadata_t metadata_buffer_prev;
-  size_t ff_byte_counter;
-  uint8_t *ptr_copy = (uint8_t *) &metadata_buffer_prev;
   while (metadata_info.sector_num < sectors_amount_for_metadata) {
     ff_byte_counter = 0; // clear current 0xFF bytes counter
     // read data
@@ -253,8 +255,9 @@ rw_status read_last_metadata(void) { // TODO: update offsets, flags etc.
       return rw_status::READ_FAILED;
     }
     // check and save last data
+    ptr_copy = (uint8_t *) &metadata_buffer_prev;
     for (
-      uint8_t *ptr = (uint8_t *) &metadata_buffer;
+      ptr = (uint8_t *) &metadata_buffer;
       ptr < (uint8_t *) (&metadata_buffer.crc8 + 1);
       ptr++
     ) {
@@ -264,7 +267,7 @@ rw_status read_last_metadata(void) { // TODO: update offsets, flags etc.
       *(ptr_copy++) = *ptr; // copy metadata
     }
     if (ff_byte_counter == sizeof(metadata_t)) {
-      // found clean memory cells, relevant data is places into `metadata_buffer_prev`
+      // found clean memory cells, relevant data is placed into `metadata_buffer_prev`
       break;
     }
     // update metadata info
@@ -277,8 +280,10 @@ rw_status read_last_metadata(void) { // TODO: update offsets, flags etc.
       metadata_info.offset = 0;
     }
   }
-  // FIXME: если были считаны первые ячейки памяти, то в metadata_buffer_prev - мусор
-  // TODO: проверять offset и sector_num, чтобы избежать проблемы выше
+  // check clean memory case
+  if (!metadata_info.offset && !metadata_info.sector_num) {
+    return rw_status::NO_METADATA;
+  }
   // check for reaching the end of available metadata memory
   if (
     (metadata_info.sector_num >= sectors_amount_for_metadata) && // last available sector
@@ -294,33 +299,7 @@ rw_status read_last_metadata(void) { // TODO: update offsets, flags etc.
       inner_flags.is_there_metadata_free_space = 0;
       return rw_status::OK;
     }
-    // no useful metadata, erase available memory used for
-    // FIXME: надо очищать сектора под данные
-    // FIXME проще очистить чип
-    if (!erase_sectors(0, sectors_amount_for_metadata)) {
-      return rw_status::ERASE_METADATA_FAILED;
-    }
-    // set and save default values
-    metadata_info.sector_num = 0;
-    metadata_info.offset = 0;
-    metadata_buffer.data_sector_num = 0;
-    metadata_buffer.current_rewrite_counter = 0;
-    metadata_buffer.crc8 = compute_crc8(
-      (uint8_t *) &metadata_buffer, sizeof(metadata_t) - 2
-    );
-    if (
-      !write_bytes(
-        metadata_info.sector_num,
-        metadata_info.offset,
-        (uint8_t *) &metadata_buffer,
-        sizeof(metadata_buffer)
-      )
-    ) {
-      return rw_status::WRITE_METADATA_FAILED;
-    }
-    inner_flags.data_is_read = 1;
-    inner_flags.is_there_metadata_free_space = 1;
-    return rw_status::OK;
+    return clean_memory();
   }
   // general case
   // check last data
@@ -333,7 +312,38 @@ rw_status read_last_metadata(void) { // TODO: update offsets, flags etc.
     inner_flags.is_there_metadata_free_space = 1;
     return rw_status::OK;
   }
-  // TODO: надо что-то делать, если считаны некорректные данные
-  // TODO: проще всего очистить чип
+  // no useful metadata, erase available memory used for
+  if (!erase_all_sectors()) {
+    return rw_status::ERASE_METADATA_FAILED;
+  }
+  return clean_memory();
 }
-rw_status read_last_data(void) { /* TODO: update offsets, flags etc.*/ }
+
+Storage::rw_status Storage::read_last_data(void) { /* TODO: update offsets, flags etc.*/ }
+
+Storage::rw_status Storage::clean_memory(void) {
+  if (!erase_all_sectors()) {
+    return rw_status::ERASE_METADATA_FAILED;
+  }
+  // set and save default values
+  metadata_info.sector_num = 0;
+  metadata_info.offset = 0;
+  metadata_buffer.data_sector_num = 0;
+  metadata_buffer.current_rewrite_counter = 0;
+  metadata_buffer.crc8 = compute_crc8(
+    (uint8_t *) &metadata_buffer, sizeof(metadata_t) - 2
+  );
+  if (
+    !write_bytes(
+      metadata_info.sector_num,
+      metadata_info.offset,
+      (uint8_t *) &metadata_buffer,
+      sizeof(metadata_buffer)
+    )
+  ) {
+    return rw_status::WRITE_METADATA_FAILED;
+  }
+  inner_flags.data_is_read = 1;
+  inner_flags.is_there_metadata_free_space = 1;
+  return rw_status::OK;
+}
