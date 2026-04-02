@@ -82,7 +82,7 @@ Storage::rw_status Storage::read_data_structure(void) {
   return rw_status::OK;
 }
 
-Storage::rw_status Storage::write_data_structure(void)  {
+Storage::rw_status Storage::write_data_structure(void) {
   if (
     write_bytes == nullptr ||
     erase_sectors == nullptr ||
@@ -108,8 +108,9 @@ Storage::rw_status Storage::write_data_structure(void)  {
   }
 
   // update crc8
+  // XXX: maybe crc8 should be written by separate command to solve problem below
   flash_data_buffer.crc8 = compute_crc8(
-    (uint8_t *) &flash_data_buffer, sizeof(flash_data_buffer) - 1
+    (uint8_t *) &flash_data_buffer, sizeof(flash_data_buffer) - 1 // FIXME: size can be different due to alignment!!
   );
   // write data
   if (
@@ -122,14 +123,19 @@ Storage::rw_status Storage::write_data_structure(void)  {
   ) {
     return rw_status::WRITE_DATA_FAILED;
   }
-  flash_data_buffer.rewrite_counter++;
+  // write success, update offset
+  data_struct_offset += sizeof(flash_data_buffer);
+  if (data_struct_offset >= sector_size) {
+    // we've reached the end of the sector memory
+    inner_flags.is_there_data_free_space = 0;
+  }
 
   // check sector changes
   if (metadata_buffer.data_sector_num != last_sectors_amount) {
     // sector was updated, rewrite metadata
     if (!inner_flags.is_there_metadata_free_space) {
       // not enough free space, erase sector/-s
-      if (!prepare_metadata_free_space) {
+      if (!prepare_metadata_free_space()) {
         return rw_status::ERASE_METADATA_FAILED;
       }
     }
@@ -149,8 +155,12 @@ Storage::rw_status Storage::write_data_structure(void)  {
   ) {
     return rw_status::WRITE_METADATA_FAILED;
   }
-
-  metadata_buffer.current_rewrite_counter++;
+  // update offset
+  metadata_info.offset += sizeof(metadata_info_t);
+  if (metadata_info.offset >= sector_size) {
+    // we've reached the end of the sector memory
+    inner_flags.is_there_metadata_free_space = 0;
+  }
   return rw_status::OK;
 }
 
@@ -164,7 +174,7 @@ bool Storage::prepare_data_free_space(void) {
       if (
         !erase_sectors(
           sectors_amount_for_metadata,
-          metadata_buffer.data_sector_num - sectors_amount_for_metadata
+          metadata_buffer.data_sector_num - sectors_amount_for_metadata + 1
         )
       ) {
         // erasing failed
@@ -172,13 +182,13 @@ bool Storage::prepare_data_free_space(void) {
       }
       metadata_buffer.data_sector_num = sectors_amount_for_metadata;
     } else {
-      // reuse sector
-      if (!erase_sectors(metadata_buffer.data_sector_num, 1)) {
-        // erasing failed
-        return false;
-      }
+      // available sectors aren't reached, use next next one
+      metadata_buffer.data_sector_num++;
     }
+  } else { // rewrite is available, reuse sector
+    flash_data_buffer.rewrite_counter++;
   }
+  inner_flags.is_there_data_free_space = 1; // free space is available
   return true;
 }
 
@@ -194,14 +204,15 @@ bool Storage::prepare_metadata_free_space(void) {
         // erasing failed
         return false;
       }
+      metadata_info.sector_num = 0;
     } else {
-      // reuse sector
-      if (!erase_sectors(metadata_info.sector_num, 1)) {
-        // erasing failed
-        return false;
-      }
+      // available sectors aren't reached, use next next one
+      metadata_info.sector_num++;
     }
+  } else { // rewrite is available, reuse sector
+    metadata_buffer.current_rewrite_counter++;
   }
+  inner_flags.is_there_metadata_free_space = 1;
   return true;
 }
 
@@ -328,7 +339,7 @@ Storage::rw_status Storage::clean_memory(void) {
   // set and save default values
   metadata_info.sector_num = 0;
   metadata_info.offset = 0;
-  metadata_buffer.data_sector_num = 0;
+  metadata_buffer.data_sector_num = sectors_amount_for_metadata;
   metadata_buffer.current_rewrite_counter = 0;
   metadata_buffer.crc8 = compute_crc8(
     (uint8_t *) &metadata_buffer, sizeof(metadata_t) - 2
