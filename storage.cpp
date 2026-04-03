@@ -109,6 +109,7 @@ Storage::rw_status Storage::write_data_structure(void) {
 
   // update crc8
   // XXX: maybe crc8 should be written by separate command to solve problem below
+  // XXX: there can be used packed structures
   flash_data_buffer.crc8 = compute_crc8(
     (uint8_t *) &flash_data_buffer, sizeof(flash_data_buffer) - 1 // FIXME: size can be different due to alignment!!
   );
@@ -293,7 +294,7 @@ Storage::rw_status Storage::read_last_metadata(void) { // TODO: update offsets, 
   }
   // check clean memory case
   if (!metadata_info.offset && !metadata_info.sector_num) {
-    return rw_status::NO_METADATA;
+    return rw_status::NO_METADATA; // XXX: in that case there should be used default values for data saving
   }
   // check for reaching the end of available metadata memory
   if (
@@ -310,6 +311,8 @@ Storage::rw_status Storage::read_last_metadata(void) { // TODO: update offsets, 
       inner_flags.is_there_metadata_free_space = 0;
       return rw_status::OK;
     }
+    // incorrect data, use default values to keep data
+    // FIXME: it should be a separate case! Function can return OK, but should be returned `rw_status::NO_METADATA`
     return clean_memory();
   }
   // general case
@@ -327,6 +330,7 @@ Storage::rw_status Storage::read_last_metadata(void) { // TODO: update offsets, 
   if (!erase_all_sectors()) {
     return rw_status::ERASE_METADATA_FAILED;
   }
+  // FIXME: it should be a separate case! Function can return OK, but should be returned `rw_status::NO_METADATA`
   return clean_memory();
 }
 
