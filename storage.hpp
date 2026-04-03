@@ -33,7 +33,7 @@ public:
 
   // setters
   bool set_read_bytes(
-    // sector number, buffer pointer, buffer size
+    // sector number, offset, buffer pointer, buffer size
     std::function<bool(uint8_t, uint32_t, uint8_t*, size_t)> f
   );
   bool set_write_bytes(
