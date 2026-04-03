@@ -11,7 +11,7 @@
 
 namespace flash_storage {
 
-constexpr uint32_t  sector_size                   = 4096;
+constexpr uint32_t  sector_size                   = 10; // TODO: set to 4096 for release
 constexpr uint8_t   sectors_amount_for_metadata   = 2;
 constexpr uint8_t   sector_rewrite_limit          = 5;
 
@@ -63,7 +63,7 @@ private:
     uint8_t sector_num;
   } metadata_info_t;
 
-  typedef struct metadata_t {
+  typedef struct __attribute__((__packed__)) metadata_t {
     uint32_t data_sector_num;
     uint16_t current_rewrite_counter;
     uint8_t crc8;
