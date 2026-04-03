@@ -109,9 +109,8 @@ Storage::rw_status Storage::write_data_structure(void) {
 
   // update crc8
   // XXX: maybe crc8 should be written by separate command to solve problem below
-  // XXX: there can be used packed structures
   flash_data_buffer.crc8 = compute_crc8(
-    (uint8_t *) &flash_data_buffer, sizeof(flash_data_buffer) - 1 // FIXME: size can be different due to alignment!!
+    (uint8_t *) &flash_data_buffer, sizeof(flash_data_buffer) - 1
   );
   // write data
   if (
@@ -144,7 +143,7 @@ Storage::rw_status Storage::write_data_structure(void) {
 
   // update metadata
   metadata_buffer.crc8 = compute_crc8(
-    (uint8_t *) &metadata_buffer, sizeof(metadata_t) - 2
+    (uint8_t *) &metadata_buffer, sizeof(metadata_t) - 1
   );
   if (
     !write_bytes(
@@ -229,7 +228,7 @@ Storage::rw_status Storage::update_metadata(void) {
       metadata_info.sector_num = 0;
       inner_flags.is_there_metadata_free_space = 1;
       metadata_buffer.crc8 = compute_crc8(
-        (uint8_t *) &metadata_buffer, sizeof(metadata_t) - 2
+        (uint8_t *) &metadata_buffer, sizeof(metadata_t) - 1
       );
       inner_flags.is_there_data_free_space = 1;
       data_struct_offset = 0;
@@ -304,7 +303,7 @@ Storage::rw_status Storage::read_last_metadata(void) {
     // check last data
     if (
       compute_crc8(
-        (uint8_t *) &metadata_buffer_prev, sizeof(metadata_t) - 2
+        (uint8_t *) &metadata_buffer_prev, sizeof(metadata_t) - 1
       ) == metadata_buffer_prev.crc8
     ) {
       inner_flags.data_is_read = 1;
@@ -322,7 +321,7 @@ Storage::rw_status Storage::read_last_metadata(void) {
   // check last data
   if (
     compute_crc8(
-      (uint8_t *) &metadata_buffer_prev, sizeof(metadata_t) - 2
+      (uint8_t *) &metadata_buffer_prev, sizeof(metadata_t) - 1
     ) == metadata_buffer_prev.crc8
   ) {
     inner_flags.data_is_read = 1;
@@ -356,7 +355,7 @@ Storage::rw_status Storage::read_last_data(void) {
   if (
     compute_crc8(
       (uint8_t *) &flash_data_buffer,
-      sizeof(main_flash_data_t) - 2 // FIXME: size
+      sizeof(main_flash_data_t) - 1
     ) != flash_data_buffer.crc8
   ) {
     return rw_status::CRC8_ERROR;
@@ -374,7 +373,7 @@ Storage::rw_status Storage::clean_memory(void) {
   metadata_buffer.data_sector_num = sectors_amount_for_metadata;
   metadata_buffer.current_rewrite_counter = 0;
   metadata_buffer.crc8 = compute_crc8(
-    (uint8_t *) &metadata_buffer, sizeof(metadata_t) - 2
+    (uint8_t *) &metadata_buffer, sizeof(metadata_t) - 1
   );
   if (
     !write_bytes(
