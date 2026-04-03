@@ -312,8 +312,11 @@ Storage::rw_status Storage::read_last_metadata(void) { // TODO: update offsets, 
       return rw_status::OK;
     }
     // incorrect data, use default values to keep data
-    // FIXME: it should be a separate case! Function can return OK, but should be returned `rw_status::NO_METADATA`
-    return clean_memory();
+    rw_status s{clean_memory()};
+    if (s != rw_status::OK) {
+      return s;
+    }
+    return rw_status::NO_METADATA;
   }
   // general case
   // check last data
@@ -330,8 +333,11 @@ Storage::rw_status Storage::read_last_metadata(void) { // TODO: update offsets, 
   if (!erase_all_sectors()) {
     return rw_status::ERASE_METADATA_FAILED;
   }
-  // FIXME: it should be a separate case! Function can return OK, but should be returned `rw_status::NO_METADATA`
-  return clean_memory();
+  rw_status s{clean_memory()};
+  if (s != rw_status::OK) {
+    return s;
+  }
+  return rw_status::NO_METADATA;
 }
 
 Storage::rw_status Storage::read_last_data(void) { /* TODO: update offsets, flags etc.*/ }
