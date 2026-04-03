@@ -99,7 +99,7 @@ private:
   bool prepare_metadata_free_space(void);
   rw_status update_metadata(void);
   rw_status read_last_metadata(void);
-  rw_status read_last_data(void); // TODO: update offsets, flags etc.
+  rw_status read_last_data(void);
   rw_status clean_memory(void);
 
   // Attributes

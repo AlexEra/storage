@@ -239,7 +239,7 @@ Storage::rw_status Storage::update_metadata(void) {
   return rw_status::OK; // metadata was updated
 }
 
-Storage::rw_status Storage::read_last_metadata(void) { // TODO: update offsets, flags etc.
+Storage::rw_status Storage::read_last_metadata(void) {
   metadata_t metadata_buffer_prev;
   size_t ff_byte_counter;
   uint8_t *ptr, *ptr_copy;
@@ -340,7 +340,29 @@ Storage::rw_status Storage::read_last_metadata(void) { // TODO: update offsets, 
   return rw_status::NO_METADATA;
 }
 
-Storage::rw_status Storage::read_last_data(void) { /* TODO: update offsets, flags etc.*/ }
+Storage::rw_status Storage::read_last_data(void) {
+  // read data
+  if (
+    !read_bytes(
+      metadata_buffer.data_sector_num,
+      data_struct_offset,
+      (uint8_t *) &flash_data_buffer,
+      sizeof(flash_data_buffer)
+    )
+  ) {
+    return rw_status::READ_FAILED;
+  }
+  // check data
+  if (
+    compute_crc8(
+      (uint8_t *) &flash_data_buffer,
+      sizeof(main_flash_data_t) - 2 // FIXME: size
+    ) != flash_data_buffer.crc8
+  ) {
+    return rw_status::CRC8_ERROR;
+  }
+  return rw_status::OK;
+}
 
 Storage::rw_status Storage::clean_memory(void) {
   if (!erase_all_sectors()) {
