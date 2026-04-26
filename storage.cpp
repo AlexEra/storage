@@ -40,14 +40,6 @@ bool Storage::set_erase_all(std::function<bool(void)> f) {
   return true;
 }
 
-bool Storage::set_max_sectors(uint16_t max_sectors) {
-  if (!max_sectors) {
-    _max_sectors = max_sectors;
-    return true;
-  }
-  return false;
-}
-
 bool Storage::set_compute_crc8(
   // buffer pointer, buffer size
   std::function<uint8_t(uint8_t *, uint8_t)> f
@@ -59,43 +51,85 @@ bool Storage::set_compute_crc8(
   return true;
 }
 
-Storage::rw_status Storage::read_data_structure(void) {
-  if (read_bytes == nullptr) {
+// TODO: maybe data should be written from the end of available memory, or should be read from the end of it
+
+Storage::rw_status Storage::read_data_structure(
+  parameter_metadata_t *p_mdata,
+  uint8_t *p_data
+) {
+  if (read_bytes == nullptr || p_mdata == nullptr || p_data == nullptr) {
     return rw_status::NULLPTR_ERROR;
   }
-
-  // check metadata update
-  rw_status rw_status{update_metadata()};
-
-  if (rw_status != rw_status::OK) {
-    return rw_status;
+  if (p_mdata->end_sector < p_mdata->start_sector) {
+    return rw_status::SECTORS_LIMITS_ERROR;
+  }
+  if (p_mdata->data_offset > sector_size) {
+    return rw_status::DATA_OFFSET_ERROR;
+  }
+  if (!p_mdata->data_size) {
+    return rw_status::DATA_SIZE_ERROR;
   }
 
-  // metadata is known
-  rw_status = read_last_data();
+  rw_status rw_status;
+  if (!inner_flags.data_is_read) {
+    // TODO: read last data
+    size_t offset{0};
+    bool read_status{false};
+    uint8_t ff_bytes_counter;
+    for (uint16_t sector{p_mdata->start_sector}; sector < p_mdata->end_sector; sector++) {
+      for (; offset < (sector_size - p_mdata->data_size); offset += p_mdata->data_size) {
+        ff_bytes_counter = 0;
+        read_status = read_bytes(sector, offset, p_data, p_mdata->data_size);
+        if (read_status) {
+          // TODO: check ff bytes
+          for (uint8_t *ptr{p_data}; ptr < (p_data + p_mdata->data_size); ptr++) {
+            if (0xFF == *ptr) {
+              ff_bytes_counter++;
+            } else {
+              break;
+            }
+          }
+          if (ff_bytes_counter == p_mdata->data_size) {
+            // clean memory, check prev data
+            // FIXME: last data can be placed at the previous sector
+            // TODO: check that this is not the beginning
+            if (compute_crc8(p_data, p_mdata->data_size)) { // FIXME: use std::span?
+              // there are no data
+              // TODO: check, that correct data was read to return it
+              if (erase_sectors(p_mdata->start_sector, p_mdata->end_sector - p_mdata->start_sector + 1)) {
+                // return to show that there should be written default values in p_data
+                return rw_status::NO_DATA;
+              }
+              return rw_status::ERASE_DATA_FAILED;
+            }
+          }
+        }
+      }
+    }
+    // TODO: check crc8
+    inner_flags.data_is_read = 1;
+  } else {
+    // TODO: read data 
+  }
+
   if (rw_status != rw_status::OK) {
     // main data structure wasn't found
     return rw_status;
   }
   // data was read successfuly
-  inner_flags.data_is_read = 1;
   return rw_status::OK;
 }
 
-Storage::rw_status Storage::write_data_structure(void) {
+Storage::rw_status Storage::write_data_structure(
+  parameter_metadata_t *p_mdata,
+  uint8_t *p_data
+) {
   if (
     write_bytes == nullptr ||
     erase_sectors == nullptr ||
-    !_max_sectors
+    !
   ) {
     return rw_status::NULLPTR_ERROR;
-  }
-
-  // check metadata update
-  rw_status rw_status{update_metadata()};
-
-  if (rw_status != rw_status::OK) {
-    return rw_status;
   }
 
   // check free space
@@ -192,200 +226,11 @@ bool Storage::prepare_data_free_space(void) {
   return true;
 }
 
-bool Storage::prepare_metadata_free_space(void) {
-  if (metadata_buffer.current_rewrite_counter == sector_rewrite_limit) {
-    // rewrite limit was reached, prepare memory for new writings
-    metadata_buffer.current_rewrite_counter = 0;
-    metadata_info.offset = 0;
-    if (metadata_info.sector_num == (sectors_amount_for_metadata - 1)) {
-      // end of the available flash for metadata was reached
-      // erase available memory
-      if (!erase_sectors(0, sectors_amount_for_metadata)) {
-        // erasing failed
-        return false;
-      }
-      metadata_info.sector_num = 0;
-    } else {
-      // available sectors aren't reached, use next next one
-      metadata_info.sector_num++;
-    }
-  } else { // rewrite is available, reuse sector
-    metadata_buffer.current_rewrite_counter++;
-  }
-  inner_flags.is_there_metadata_free_space = 1;
-  return true;
-}
-
-Storage::rw_status Storage::update_metadata(void) {
-  if (!inner_flags.data_is_read) {
-    // first launch, metadata is clear, update it
-    rw_status rw_status = read_last_metadata();
-    if (rw_status != rw_status::OK) {
-      // metadata wasn't found
-      metadata_buffer.data_sector_num = sectors_amount_for_metadata;
-      metadata_buffer.current_rewrite_counter = 0;
-      metadata_info.offset = 0;
-      metadata_info.sector_num = 0;
-      inner_flags.is_there_metadata_free_space = 1;
-      metadata_buffer.crc8 = compute_crc8(
-        (uint8_t *) &metadata_buffer, sizeof(metadata_t) - 1
-      );
-      inner_flags.is_there_data_free_space = 1;
-      data_struct_offset = 0;
-      return rw_status;
-    }
-  }
-  return rw_status::OK; // metadata was updated
-}
-
-Storage::rw_status Storage::read_last_metadata(void) {
-  metadata_t metadata_buffer_prev;
-  size_t ff_byte_counter;
-  uint8_t *ptr, *ptr_copy;
-
-  if (inner_flags.data_is_read) {
-    // metadata already has been read
-    return rw_status::OK;
-  }
-
-  if (read_bytes == nullptr) {
-    return rw_status::NULLPTR_ERROR;
-  }
-
-  while (metadata_info.sector_num < sectors_amount_for_metadata) {
-    ff_byte_counter = 0; // clear current 0xFF bytes counter
-    // read data
-    if (
-      !read_bytes(
-        metadata_info.sector_num,
-        metadata_info.offset,
-        (uint8_t *) &metadata_buffer,
-        sizeof(metadata_t)
-      )
-    ) {
-      return rw_status::READ_FAILED;
-    }
-    // check and save last data
-    ptr_copy = (uint8_t *) &metadata_buffer_prev;
-    for (
-      ptr = (uint8_t *) &metadata_buffer;
-      ptr < (uint8_t *) (&metadata_buffer.crc8 + 1);
-      ptr++
-    ) {
-      if (*ptr == 0xFF) {
-        ff_byte_counter++;
-      }
-      *(ptr_copy++) = *ptr; // copy metadata
-    }
-    if (ff_byte_counter == sizeof(metadata_t)) {
-      // found clean memory cells, relevant data is placed into `metadata_buffer_prev`
-      break;
-    }
-    // update metadata info
-    metadata_info.offset += sizeof(metadata_t);
-    if (metadata_info.offset >= 4095) {
-      if (++metadata_info.sector_num >= sectors_amount_for_metadata) {
-        break;
-      }
-      // work with next sector, clear offset
-      metadata_info.offset = 0;
-    }
-  }
-  // check clean memory case
-  if (!metadata_info.offset && !metadata_info.sector_num) {
-    return rw_status::NO_METADATA; // XXX: in that case there should be used default values for data saving
-  }
-  // check for reaching the end of available metadata memory
-  if (
-    (metadata_info.sector_num >= sectors_amount_for_metadata) && // last available sector
-    (metadata_info.offset >= 4095)
-  ) {
-    // check last data
-    if (
-      compute_crc8(
-        (uint8_t *) &metadata_buffer_prev, sizeof(metadata_t) - 1
-      ) == metadata_buffer_prev.crc8
-    ) {
-      inner_flags.data_is_read = 1;
-      inner_flags.is_there_metadata_free_space = 0;
-      return rw_status::OK;
-    }
-    // incorrect data, use default values to keep data
-    rw_status s{clean_memory()};
-    if (s != rw_status::OK) {
-      return s;
-    }
-    return rw_status::NO_METADATA;
-  }
-  // general case
-  // check last data
-  if (
-    compute_crc8(
-      (uint8_t *) &metadata_buffer_prev, sizeof(metadata_t) - 1
-    ) == metadata_buffer_prev.crc8
-  ) {
-    inner_flags.data_is_read = 1;
-    inner_flags.is_there_metadata_free_space = 1;
-    return rw_status::OK;
-  }
-  // no useful metadata, erase available memory used for
-  if (!erase_all_sectors()) {
-    return rw_status::ERASE_METADATA_FAILED;
-  }
-  rw_status s{clean_memory()};
-  if (s != rw_status::OK) {
-    return s;
-  }
-  return rw_status::NO_METADATA;
-}
-
-Storage::rw_status Storage::read_last_data(void) {
-  // read data
-  if (
-    !read_bytes(
-      metadata_buffer.data_sector_num,
-      data_struct_offset,
-      (uint8_t *) &flash_data_buffer,
-      sizeof(flash_data_buffer)
-    )
-  ) {
-    return rw_status::READ_FAILED;
-  }
-  // check data
-  if (
-    compute_crc8(
-      (uint8_t *) &flash_data_buffer,
-      sizeof(main_flash_data_t) - 1
-    ) != flash_data_buffer.crc8
-  ) {
-    return rw_status::CRC8_ERROR;
-  }
-  return rw_status::OK;
-}
-
 Storage::rw_status Storage::clean_memory(void) {
   if (!erase_all_sectors()) {
     return rw_status::ERASE_METADATA_FAILED;
   }
-  // set and save default values
-  metadata_info.sector_num = 0;
-  metadata_info.offset = 0;
-  metadata_buffer.data_sector_num = sectors_amount_for_metadata;
-  metadata_buffer.current_rewrite_counter = 0;
-  metadata_buffer.crc8 = compute_crc8(
-    (uint8_t *) &metadata_buffer, sizeof(metadata_t) - 1
-  );
-  if (
-    !write_bytes(
-      metadata_info.sector_num,
-      metadata_info.offset,
-      (uint8_t *) &metadata_buffer,
-      sizeof(metadata_buffer)
-    )
-  ) {
-    return rw_status::WRITE_METADATA_FAILED;
-  }
-  inner_flags.data_is_read = 1;
+  // TODO: should it be finished?
   inner_flags.is_there_metadata_free_space = 1;
   return rw_status::OK;
 }
