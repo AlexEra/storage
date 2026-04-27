@@ -51,29 +51,6 @@ bool Storage::set_compute_crc8(
   return true;
 }
 
-Storage::check_status Storage::check_taken_data(
-  const bool read_status,
-  uint8_t *p_data,
-  const uint16_t data_size
-) {
-  if (read_status) {
-    uint16_t ff_counter{0};
-    for (uint8_t idx{0}; idx < data_size; idx++) {
-      if (0xFF == p_data[idx]) {
-        ff_counter++;
-      } else {
-        break;
-      }
-    }
-    if (ff_counter == data_size) {
-      // check prev data      
-      return check_status::FF_DATA;
-    }
-    return check_status::THERE_IS_DATA;
-  }
-  return check_status::READ_FAILED;
-}
-
 Storage::rw_status Storage::read_data_structure(
   parameter_metadata_t *p_mdata,
   uint8_t *p_data
@@ -93,54 +70,39 @@ Storage::rw_status Storage::read_data_structure(
 
   rw_status rw_status;
   if (!inner_flags.data_is_read) {
-    // TODO: read last data
     size_t offset{0};
     bool read_status{false};
-    uint8_t ff_bytes_counter;
     uint16_t prev_sector{p_mdata->start_sector};
     uint16_t prev_offset{0};
-    check_status status_check;
-    // XXX: maybe firstly we should check data's crc8 before searching the FF bytes
     for (uint16_t sector{p_mdata->start_sector}; sector < p_mdata->end_sector; sector++) {
       for (; offset < (sector_size - p_mdata->data_size); offset += p_mdata->data_size) {
-        ff_bytes_counter = 0;
         read_status = read_bytes(sector, offset, p_data, p_mdata->data_size);
-        status_check = check_taken_data(read_status, p_data, p_mdata->data_size);
-        switch (status_check) {
-          case check_status::FF_DATA: // check previous data
-            // TODO: check that this is not the beginning
-            if (compute_crc8(p_data, p_mdata->data_size)) { // FIXME: use std::span?
-              // there are no data
-              // TODO: check, that correct data was read to return it, because of current is damaged (cyclic?)
-              if (erase_sectors(p_mdata->start_sector, p_mdata->end_sector - p_mdata->start_sector + 1)) {
-                // return to show that there should be written default values in p_data
-                return rw_status::NO_DATA;
-              }
-              return rw_status::ERASE_DATA_FAILED;
-            }
-            break;
-          case check_status::READ_FAILED:
-            // TODO: handle case, when out of available memory - check last correct data
-            break;
-          case check_status::THERE_IS_DATA: // read next bytes
-          default:
-            break;
+        if (!compute_crc8(p_data, p_mdata->data_size) || !read_status) {
+          // data is correct
+          prev_offset = offset;
+          continue;
         }
-        prev_offset = offset;
+        // incorrect data was read
+        if ((sector == p_mdata->start_sector) && !offset) {
+          // beginning of the memory
+          // clear memory, there is no useful data
+          if (!erase_sectors(p_mdata->start_sector, p_mdata->end_sector - p_mdata->start_sector + 1)) {
+            return rw_status::ERASE_DATA_FAILED;
+          }
+          // return to show that there should be written default values in p_data
+          return rw_status::NO_DATA;
+        }
+        // there is correct data, read it again
+        read_status = read_bytes(prev_sector, prev_offset, p_data, p_mdata->data_size);
+        if (read_status) {
+          inner_flags.data_is_read = 1;
+          return rw_status::OK;
+        }
+        return rw_status::READ_FAILED;
       }
       prev_sector = sector;
     }
-    // TODO: check crc8
-    inner_flags.data_is_read = 1;
-  } else {
-    // TODO: read data 
   }
-
-  if (rw_status != rw_status::OK) {
-    // main data structure wasn't found
-    return rw_status;
-  }
-  // data was read successfuly
   return rw_status::OK;
 }
 

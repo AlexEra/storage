@@ -50,12 +50,6 @@ public:
   Storage::rw_status write_data_structure(parameter_metadata_t *p_mdata, uint8_t *p_data);
 
 private:
-  enum class check_status {
-    READ_FAILED,
-    THERE_IS_DATA,
-    FF_DATA,
-    END
-  };  
   typedef struct flags_t {
     uint8_t data_is_read: 1;
     uint8_t is_there_data_free_space: 1;
@@ -84,11 +78,6 @@ private:
   };
   bool prepare_data_free_space(void);
   rw_status clean_memory(void);
-  check_status check_taken_data(
-    const bool read_status,
-    uint8_t *p_data,
-    const uint16_t data_size
-  );
 
   // Attributes
   flags_t inner_flags{0};
