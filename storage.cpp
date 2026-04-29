@@ -112,14 +112,13 @@ Storage::rw_status Storage::write_data_structure(
 ) {
   if (
     write_bytes == nullptr ||
-    erase_sectors == nullptr ||
-    !
+    erase_sectors == nullptr
   ) {
     return rw_status::NULLPTR_ERROR;
   }
 
   // check free space
-  uint32_t last_sectors_amount = metadata_buffer.data_sector_num;
+  uint16_t last_sectors_amount = data_sector_num;
   if (!inner_flags.is_there_data_free_space) {
     // not enough free space, erase sector/-s
     if (!prepare_data_free_space()) {

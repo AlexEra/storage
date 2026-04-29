@@ -81,6 +81,7 @@ private:
 
   // Attributes
   flags_t inner_flags{0};
+  uint16_t data_sector_num{0};
 };
 
 } // namespace flash_storage
