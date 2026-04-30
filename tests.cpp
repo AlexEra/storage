@@ -3,13 +3,35 @@
 #include <algorithm>
 #include "storage.hpp"
 
+typedef struct __attribute__((__packed__)) test_data_t {
+  uint8_t val_0;
+  uint8_t val_1;
+  uint16_t offset;
+  uint8_t crc8;
+} test_data_t;
+
 namespace fs = flash_storage;
-uint8_t test_mem[5][fs::sector_size];
+uint8_t test_mem[sizeof(test_data_t)][fs::sector_size];
 
 int main() {
   fs::Storage st;
-
-  st.set_max_sectors(5);
+  test_data_t param_0, param_1;
+  external_mem_map::parameter_metadata_t mdata_0 {
+    .start_sector = 0,
+    .end_sector = 3,
+    .current_sector = 0,
+    .data_offset = 0,
+    .data_size = sizeof(test_data_t),
+    .sector_rewrite_counter = 0
+  },
+  mdata_1 {
+    .start_sector = 4,
+    .end_sector = 8,
+    .current_sector = 4,
+    .data_offset = 0,
+    .data_size = sizeof(test_data_t),
+    .sector_rewrite_counter = 0
+  };
 
   st.set_erase_all([&] {
     for (auto &r : test_mem) {
@@ -47,16 +69,26 @@ int main() {
   st.set_read_bytes([&] (uint8_t sec_num, uint32_t offs, uint8_t *ptr_buf, size_t buf_size) {
     if (sec_num >= 5) {
       return false;
-    } else if (offs >= (fs::sector_size - sizeof(main_flash_data_t))) {
+    } else if (offs >= (fs::sector_size - sizeof(test_data_t))) {
       return false;
-    } else if (buf_size > sizeof(main_flash_data_t)) {
+    } else if (buf_size > sizeof(test_data_t)) {
       return false;
     }
     memcpy(ptr_buf, test_mem[sec_num], buf_size);
     return true;
   });
 
-  st.set_write_bytes(); // TOOD: implement
+  st.set_write_bytes([&] (uint8_t sector_number, uint32_t offset, uint8_t *p_buf, size_t buf_size) {
+    if (
+      (sector_number > external_mem_map::max_sectors_amount) ||
+      (offset > external_mem_map::sector_size) ||
+      (p_buf == nullptr) || (buf_size > external_mem_map::sector_size)
+    ) {
+      return false;
+    }
+    memcpy(test_mem[sector_number], p_buf, buf_size);
+    return true;
+  });
 
   // TODO: firstly, test basic functions
   // TODO: secondly, test Storage class methods
