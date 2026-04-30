@@ -20,9 +20,10 @@ static_assert(max_sectors_amount, "Max sector amount have to be > 0");
 typedef struct parameter_metadata_t {
   uint16_t start_sector;
   uint16_t end_sector;
+  uint16_t current_sector;
   uint16_t data_offset;
   uint16_t data_size;
-  uint8_t rewrite_counter;
+  uint8_t sector_rewrite_counter;
 } parameter_metadata_t;
 
 } // namespace externalMemMap

@@ -55,7 +55,11 @@ Storage::rw_status Storage::read_data_structure(
   parameter_metadata_t *p_mdata,
   uint8_t *p_data
 ) {
-  if (read_bytes == nullptr || p_mdata == nullptr || p_data == nullptr) {
+  if (
+    read_bytes == nullptr || p_mdata == nullptr ||
+    p_data == nullptr || erase_sectors == nullptr ||
+    compute_crc8 == nullptr
+  ) {
     return rw_status::NULLPTR_ERROR;
   }
   if (p_mdata->end_sector < p_mdata->start_sector) {
@@ -69,7 +73,7 @@ Storage::rw_status Storage::read_data_structure(
   }
 
   rw_status rw_status;
-  if (!inner_flags.data_is_read) {
+  if (!data_is_read_flag) {
     size_t offset{0};
     bool read_status{false};
     uint16_t prev_sector{p_mdata->start_sector};
@@ -80,6 +84,9 @@ Storage::rw_status Storage::read_data_structure(
         if (!compute_crc8(p_data, p_mdata->data_size) || !read_status) {
           // data is correct
           prev_offset = offset;
+          p_mdata->current_sector = sector;
+          p_mdata->data_offset = offset;
+          p_mdata->sector_rewrite_counter = *(p_data + p_mdata->data_size - 2); // XXX: rewrite counter must be the pre-last byte
           continue;
         }
         // incorrect data was read
@@ -89,13 +96,16 @@ Storage::rw_status Storage::read_data_structure(
           if (!erase_sectors(p_mdata->start_sector, p_mdata->end_sector - p_mdata->start_sector + 1)) {
             return rw_status::ERASE_DATA_FAILED;
           }
+          // set default values
+          p_mdata->current_sector = 0;
+          p_mdata->data_offset = 0;
           // return to show that there should be written default values in p_data
           return rw_status::NO_DATA;
         }
         // there is correct data, read it again
         read_status = read_bytes(prev_sector, prev_offset, p_data, p_mdata->data_size);
         if (read_status) {
-          inner_flags.data_is_read = 1;
+          data_is_read_flag = true;
           return rw_status::OK;
         }
         return rw_status::READ_FAILED;
@@ -111,111 +121,90 @@ Storage::rw_status Storage::write_data_structure(
   uint8_t *p_data
 ) {
   if (
-    write_bytes == nullptr ||
-    erase_sectors == nullptr
+    p_data == nullptr || p_mdata == nullptr ||
+    write_bytes == nullptr || erase_sectors == nullptr ||
+    compute_crc8 == nullptr
   ) {
     return rw_status::NULLPTR_ERROR;
   }
-
-  // check free space
-  uint16_t last_sectors_amount = data_sector_num;
-  if (!inner_flags.is_there_data_free_space) {
-    // not enough free space, erase sector/-s
-    if (!prepare_data_free_space()) {
-      return rw_status::ERASE_DATA_FAILED;
-    }
+  if (p_mdata->end_sector < p_mdata->start_sector) {
+    return rw_status::SECTORS_LIMITS_ERROR;
+  }
+  if (p_mdata->data_offset > sector_size) {
+    return rw_status::DATA_OFFSET_ERROR;
+  }
+  if (!p_mdata->data_size) {
+    return rw_status::DATA_SIZE_ERROR;
   }
 
+  uint16_t offest_backup = p_mdata->data_offset;
+  uint16_t rewrite_counter_backup = p_mdata->sector_rewrite_counter;
+  uint16_t sector_index_backup = p_mdata->current_sector;
   // update crc8
   // XXX: maybe crc8 should be written by separate command to solve problem below
-  flash_data_buffer.crc8 = compute_crc8(
-    (uint8_t *) &flash_data_buffer, sizeof(flash_data_buffer) - 1
+  *(p_data + p_mdata->data_size - 1) = compute_crc8( // XXX: last byte should be CRC8
+    (uint8_t *) &p_data, sizeof(p_mdata->data_size) - 2
   );
+  // check free space before writing
+  if (
+    (external_mem_map::sector_size - p_mdata->data_offset - p_mdata->data_size) < p_mdata->data_size
+  ) {
+    // not enought free space
+    if (p_mdata->sector_rewrite_counter == external_mem_map::sector_rewrite_limit) {
+      // go to the next sector or start from the beginning
+      if (p_mdata->current_sector == p_mdata->end_sector) {
+        // start from the beginning
+        // clear available memory
+        if (!erase_sectors(p_mdata->start_sector, p_mdata->end_sector)) {
+          return rw_status::ERASE_DATA_FAILED;
+        }
+        p_mdata->current_sector = p_mdata->start_sector;
+      } else {
+        // go to the next sector, it should be already cleaned
+        p_mdata->current_sector++;
+      }
+      p_mdata->data_offset = 0;
+      p_mdata->sector_rewrite_counter = 0;
+    } else {
+      // reuse sector
+      if (!erase_sectors(p_mdata->current_sector, p_mdata->current_sector)) {
+        return rw_status::ERASE_DATA_FAILED;
+      }
+      p_mdata->data_offset = 0;
+      p_mdata->sector_rewrite_counter++;
+    }
+  } else {
+    // continue to write to current sector 
+    p_mdata->data_offset += p_mdata->data_size;
+  }
+  // update sector rewrite counter
+  *(p_data + p_mdata->data_size - 2) = p_mdata->sector_rewrite_counter;
+
   // write data
   if (
     !write_bytes(
-      metadata_buffer.data_sector_num * sector_size,
-      data_struct_offset,
-      (uint8_t *) &flash_data_buffer,
-      sizeof(flash_data_buffer)
+      p_mdata->current_sector,
+      p_mdata->data_offset,
+      p_data,
+      p_mdata->data_size
     )
   ) {
+    // restore origin values
+    p_mdata->data_offset = offest_backup;
+    p_mdata->sector_rewrite_counter = rewrite_counter_backup;
+    p_mdata->current_sector = sector_index_backup;
     return rw_status::WRITE_DATA_FAILED;
   }
-  // write success, update offset
-  data_struct_offset += sizeof(flash_data_buffer);
-  if (data_struct_offset >= sector_size) {
-    // we've reached the end of the sector memory
-    inner_flags.is_there_data_free_space = 0;
-  }
-
-  // check sector changes
-  if (metadata_buffer.data_sector_num != last_sectors_amount) {
-    // sector was updated, rewrite metadata
-    if (!inner_flags.is_there_metadata_free_space) {
-      // not enough free space, erase sector/-s
-      if (!prepare_metadata_free_space()) {
-        return rw_status::ERASE_METADATA_FAILED;
-      }
-    }
-  }
-
-  // update metadata
-  metadata_buffer.crc8 = compute_crc8(
-    (uint8_t *) &metadata_buffer, sizeof(metadata_t) - 1
-  );
-  if (
-    !write_bytes(
-      metadata_info.sector_num,
-      metadata_info.offset,
-      (uint8_t *) &metadata_buffer,
-      sizeof(metadata_buffer)
-    )
-  ) {
-    return rw_status::WRITE_METADATA_FAILED;
-  }
-  // update offset
-  metadata_info.offset += sizeof(metadata_info_t);
-  if (metadata_info.offset >= sector_size) {
-    // we've reached the end of the sector memory
-    inner_flags.is_there_metadata_free_space = 0;
-  }
+  // TODO: read data and compare for checking write operation
   return rw_status::OK;
 }
 
-bool Storage::prepare_data_free_space(void) {
-  if (flash_data_buffer.rewrite_counter == sector_rewrite_limit) {
-    // rewrite limit was reached, prepare memory for new writings
-    flash_data_buffer.rewrite_counter = 0;
-    data_struct_offset = 0;
-    if (metadata_buffer.data_sector_num == (_max_sectors - 1)) {
-      // end of the flash was reached, erase available memory
-      if (
-        !erase_sectors(
-          sectors_amount_for_metadata,
-          metadata_buffer.data_sector_num - sectors_amount_for_metadata + 1
-        )
-      ) {
-        // erasing failed
-        return false;
-      }
-      metadata_buffer.data_sector_num = sectors_amount_for_metadata;
-    } else {
-      // available sectors aren't reached, use next next one
-      metadata_buffer.data_sector_num++;
-    }
-  } else { // rewrite is available, reuse sector
-    flash_data_buffer.rewrite_counter++;
-  }
-  inner_flags.is_there_data_free_space = 1; // free space is available
-  return true;
-}
-
 Storage::rw_status Storage::clean_memory(void) {
-  if (!erase_all_sectors()) {
-    return rw_status::ERASE_METADATA_FAILED;
+  if (erase_all_sectors == nullptr) {
+    return rw_status::NULLPTR_ERROR;
   }
-  // TODO: should it be finished?
-  inner_flags.is_there_metadata_free_space = 1;
+  if (!erase_all_sectors()) {
+    return rw_status::ERASE_DATA_FAILED;
+  }
   return rw_status::OK;
 }
