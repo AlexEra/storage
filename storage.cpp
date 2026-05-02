@@ -141,7 +141,6 @@ Storage::rw_status Storage::write_data_structure(
   uint16_t rewrite_counter_backup = p_mdata->sector_rewrite_counter;
   uint16_t sector_index_backup = p_mdata->current_sector;
   // update crc8
-  // XXX: maybe crc8 should be written by separate command to solve problem below
   *(p_data + p_mdata->data_size - 1) = compute_crc8( // XXX: last byte should be CRC8
     (uint8_t *) &p_data, sizeof(p_mdata->data_size) - 2
   );
