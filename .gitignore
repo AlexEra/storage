@@ -2,6 +2,7 @@
 *.o
 *.out
 *.exe
+/build
 
 CMakeLists.txt.user
 CMakeCache.txt
