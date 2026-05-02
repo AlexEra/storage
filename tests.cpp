@@ -103,6 +103,13 @@ int main() {
 
   status = st.read_data_structure(&mdata_0, (uint8_t *) &param_0);
   std::cout << (int) status << '\n';
+  if (status == fs::Storage::rw_status::NO_DATA) {
+    // set default values
+    param_0.val_0 = 66;
+    param_0.val_1 = 42;
+  } else {
+    std::cout << "Something went wrong\n";
+  }
 
   return 0;
 }
