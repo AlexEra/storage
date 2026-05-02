@@ -86,7 +86,8 @@ Storage::rw_status Storage::read_data_structure(
           prev_offset = offset;
           p_mdata->current_sector = sector;
           p_mdata->data_offset = offset;
-          p_mdata->sector_rewrite_counter = *(p_data + p_mdata->data_size - 2); // XXX: rewrite counter must be the pre-last byte
+          // XXX: rewrite counter must be the pre-last byte
+          p_mdata->sector_rewrite_counter = *((uint16_t *)(p_data + p_mdata->data_size - 3));
           continue;
         }
         // incorrect data was read
