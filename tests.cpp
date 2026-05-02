@@ -15,6 +15,7 @@ uint8_t test_mem[sizeof(test_data_t)][fs::sector_size];
 
 int main() {
   fs::Storage st;
+  fs::Storage::rw_status status;
   test_data_t param_0, param_1;
   external_mem_map::parameter_metadata_t mdata_0 {
     .start_sector = 0,
@@ -92,6 +93,9 @@ int main() {
 
   // TODO: firstly, test basic functions
   // TODO: secondly, test Storage class methods
+
+  status = st.read_data_structure(&mdata_0, (uint8_t *) &param_0);
+  std::cout << (int) status << '\n';
 
   return 0;
 }
