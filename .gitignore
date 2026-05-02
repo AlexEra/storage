@@ -1,3 +1,8 @@
+*.a
+*.o
+*.out
+*.exe
+
 CMakeLists.txt.user
 CMakeCache.txt
 CMakeFiles
