@@ -94,6 +94,13 @@ int main() {
   // TODO: firstly, test basic functions
   // TODO: secondly, test Storage class methods
 
+  // clean memory - set 0xFF
+  for (auto &raw : test_mem) {
+    for (auto &value : raw) {
+      value = 0xFF;
+    }
+  }
+
   status = st.read_data_structure(&mdata_0, (uint8_t *) &param_0);
   std::cout << (int) status << '\n';
 
