@@ -74,14 +74,13 @@ Storage::rw_status Storage::read_data_structure(
 
   rw_status rw_status;
   if (!p_mdata->data_is_read_flag) {
-    size_t offset{0};
     bool read_status{false};
     uint16_t prev_sector{p_mdata->start_sector};
     uint16_t prev_offset{0};
     for (uint16_t sector{p_mdata->start_sector}; sector < p_mdata->end_sector; sector++) {
-      for (; offset < (sector_size - p_mdata->data_size); offset += p_mdata->data_size) {
+      for (size_t offset{0}; offset < (sector_size - p_mdata->data_size); offset += p_mdata->data_size) {
         read_status = read_bytes(sector, offset, p_data, p_mdata->data_size);
-        if (!compute_crc8(p_data, p_mdata->data_size) || !read_status) {
+        if (!compute_crc8(p_data, p_mdata->data_size) && read_status) {
           // data is correct
           prev_offset = offset;
           p_mdata->current_sector = sector;
@@ -114,6 +113,7 @@ Storage::rw_status Storage::read_data_structure(
       }
       prev_sector = sector;
     }
+    return rw_status::READ_FAILED;
   }
   return rw_status::OK;
 }

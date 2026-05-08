@@ -59,11 +59,14 @@ int main() {
     for (uint8_t i{0}; i < sz; i++) {
       res ^= ptr_arr[i];
     }
+    /* std::cout << "_____________________________\n";
+    std::cout << "CRC8: " << (int) res << '\n';
+    std::cout << "_____________________________\n"; */
     return res;
   });
 
   st.set_erase_sectors([&] (uint32_t sector_num, uint32_t sectors_to_erase) {
-    if (sector_num >= 5) {
+    if (sector_num >= external_mem_map::max_sectors_amount) {
       return false;
     }
     uint32_t s_lim = sectors_to_erase + sector_num;
@@ -79,7 +82,7 @@ int main() {
   });
 
   st.set_read_bytes([&] (uint8_t sec_num, uint32_t offs, uint8_t *ptr_buf, size_t buf_size) {
-    if (sec_num >= 5) {
+    if (sec_num >= external_mem_map::max_sectors_amount) {
       return false;
     } else if (offs >= (fs::sector_size - sizeof(test_data_t))) {
       return false;
@@ -116,10 +119,9 @@ int main() {
    * 1. read data: set default, because there are no any data
    * 2. write data
    * 3. set zero to metadata, repeat reading
-   * 4. set new data
-   * 5. write new data
-   * 6. read data again
-   * 7. check sector rewrite
+   * 4. set and write new data
+   * 5. read data again
+   * 6. check sector rewrite
    */
 
   // read param_0
@@ -181,6 +183,27 @@ int main() {
   }
   std::cout << '\n';
 
+  // read param_1 again
+  mdata_1.data_is_read_flag = false;
+  status = st.read_data_structure(&mdata_1, (uint8_t *) &param_1);
+  if (status != fs::Storage::rw_status::OK) {
+    std::cout << "Error: " << (int) status << '\n';
+  } else {
+    std::cout << "param_1 was read again\n";
+  }
+  std::cout << '\n';
+
+  // set and write new param_1
+  param_1.val_0 = 83;
+  param_1.val_1 = 30;
+  status = st.write_data_structure(&mdata_1, (uint8_t *) &param_1);
+  if (status != fs::Storage::rw_status::OK) {
+    std::cout << "Error: " << (int) status << '\n';
+  } else {
+    std::cout << "param_1 was written\n";
+    print_test_mem();
+  }
+  std::cout << '\n';
 
   return 0;
 }
