@@ -164,6 +164,7 @@ int main() {
     std::cout << "param_1 was written\n";
   }
   print_test_mem();
+  std::cout << '\n';
 
   // uint8_t res{0};
   // for (uint8_t *ptr = (uint8_t *) &param_0; ptr < (((uint8_t *) &param_0) + offsetof(test_data_t, crc8)); ptr++) {
@@ -176,8 +177,10 @@ int main() {
   if (status != fs::Storage::rw_status::OK) {
     std::cout << "Error: " << (int) status << '\n';
   } else {
-    std::cout << "param_0 was read\n";
+    std::cout << "param_0 was read again\n";
   }
+  std::cout << '\n';
+
 
   return 0;
 }
