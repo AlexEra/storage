@@ -98,8 +98,9 @@ Storage::rw_status Storage::read_data_structure(
             return rw_status::ERASE_DATA_FAILED;
           }
           // set default values
-          p_mdata->current_sector = 0;
+          p_mdata->current_sector = p_mdata->start_sector;
           p_mdata->data_offset = 0;
+          p_mdata->sector_rewrite_counter = 0;
           // return to show that there should be written default values in p_data
           return rw_status::NO_DATA;
         }
