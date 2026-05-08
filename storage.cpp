@@ -77,8 +77,8 @@ Storage::rw_status Storage::read_data_structure(
     bool read_status{false};
     uint16_t prev_sector{p_mdata->start_sector};
     uint16_t prev_offset{0};
-    for (uint16_t sector{p_mdata->start_sector}; sector < p_mdata->end_sector; sector++) {
-      for (size_t offset{0}; offset < (sector_size - p_mdata->data_size); offset += p_mdata->data_size) {
+    for (uint16_t sector{p_mdata->start_sector}; sector <= p_mdata->end_sector; sector++) {
+      for (size_t offset{0}; offset <= (sector_size - p_mdata->data_size); offset += p_mdata->data_size) {
         read_status = read_bytes(sector, offset, p_data, p_mdata->data_size);
         if (!compute_crc8(p_data, p_mdata->data_size) && read_status) {
           // data is correct
@@ -100,6 +100,7 @@ Storage::rw_status Storage::read_data_structure(
           p_mdata->current_sector = p_mdata->start_sector;
           p_mdata->data_offset = 0;
           p_mdata->sector_rewrite_counter = 0;
+          p_mdata->data_is_read_flag = true;
           // return to show that there should be written default values in p_data
           return rw_status::NO_DATA;
         }
@@ -148,7 +149,8 @@ Storage::rw_status Storage::write_data_structure(
   );
   // check free space before writing
   if (
-    (external_mem_map::sector_size - p_mdata->data_offset - p_mdata->data_size) < p_mdata->data_size
+    // FIXME: check left free bytes - it depends on written data, also on offset, that is already counted
+    (external_mem_map::sector_size - p_mdata->data_offset /* - p_mdata->data_size */) < p_mdata->data_size
   ) {
     // not enought free space
     if (p_mdata->sector_rewrite_counter == external_mem_map::sector_rewrite_limit) {
@@ -172,7 +174,7 @@ Storage::rw_status Storage::write_data_structure(
         return rw_status::ERASE_DATA_FAILED;
       }
       p_mdata->data_offset = 0;
-      p_mdata->sector_rewrite_counter++;
+      p_mdata->sector_rewrite_counter++; // FIXME: increase it after successful writing
     }
   } else {
     // continue to write to current sector 

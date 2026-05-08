@@ -71,7 +71,7 @@ int main() {
     }
     uint32_t s_lim = sectors_to_erase + sector_num;
     for (uint32_t s{sector_num}; s < s_lim; s++) {
-      if (s >= 5) {
+      if (s >= external_mem_map::max_sectors_amount) {
         break;
       }
       for (auto &c : test_mem[s]) {
@@ -84,7 +84,7 @@ int main() {
   st.set_read_bytes([&] (uint8_t sec_num, uint32_t offs, uint8_t *ptr_buf, size_t buf_size) {
     if (sec_num >= external_mem_map::max_sectors_amount) {
       return false;
-    } else if (offs >= (fs::sector_size - sizeof(test_data_t))) {
+    } else if (offs > (fs::sector_size - sizeof(test_data_t))) {
       return false;
     } else if (buf_size > sizeof(test_data_t)) {
       return false;
@@ -184,7 +184,7 @@ int main() {
   std::cout << '\n';
 
   // read param_1 again
-  mdata_1.data_is_read_flag = false;
+  mdata_1.data_is_read_flag = false; // imitate rebooting
   status = st.read_data_structure(&mdata_1, (uint8_t *) &param_1);
   if (status != fs::Storage::rw_status::OK) {
     std::cout << "Error: " << (int) status << '\n';
@@ -202,6 +202,8 @@ int main() {
   } else {
     std::cout << "param_1 was written\n";
     print_test_mem();
+    std::cout << "Rewrite counter: " << (int) mdata_1.sector_rewrite_counter << '\n';
+    std::cout << "Data offset: " << (int) mdata_1.data_offset << '\n';
   }
   std::cout << '\n';
 
