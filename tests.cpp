@@ -108,6 +108,7 @@ int main() {
    * 4. set new data
    * 5. write new data
    * 6. read data again
+   * 7. check sector rewrite
    */
 
   status = st.read_data_structure(&mdata_0, (uint8_t *) &param_0);
