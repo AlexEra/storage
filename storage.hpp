@@ -51,26 +51,26 @@ public:
 
 private:
 
-// Methods
-std::function<bool(uint8_t, uint32_t, uint8_t*, size_t)> read_bytes {
-  // sector number, offset, buffer pointer, buffer size
-  [] (uint8_t, uint32_t, uint8_t*, size_t) { return false; }
-};
-std::function<bool(uint8_t, uint32_t, uint8_t*, size_t)> write_bytes {
-  // sector number, offset, buffer pointer, buffer size
-  [] (uint8_t, uint32_t, uint8_t*, size_t) { return false; }
-};
-std::function<bool(uint32_t, uint32_t)> erase_sectors {
-  // sector number, sectors amount to erase
-  [] (uint32_t, uint32_t) { return false; }
-};
-std::function<bool(void)> erase_all_sectors {
-  [] { return false; }
-};
-std::function<uint8_t(uint8_t *, uint8_t)> compute_crc8 {
-  [] (uint8_t *, uint8_t) { return 0; }
-};
-rw_status clean_memory(void);
+  // Methods
+  std::function<bool(uint8_t, uint32_t, uint8_t*, size_t)> read_bytes {
+    // sector number, offset, buffer pointer, buffer size
+    [] (uint8_t, uint32_t, uint8_t*, size_t) { return false; }
+  };
+  std::function<bool(uint8_t, uint32_t, uint8_t*, size_t)> write_bytes {
+    // sector number, offset, buffer pointer, buffer size
+    [] (uint8_t, uint32_t, uint8_t*, size_t) { return false; }
+  };
+  std::function<bool(uint32_t, uint32_t)> erase_sectors {
+    // sector number, sectors amount to erase
+    [] (uint32_t, uint32_t) { return false; }
+  };
+  std::function<bool(void)> erase_all_sectors {
+    [] { return false; }
+  };
+  std::function<uint8_t(uint8_t *, uint8_t)> compute_crc8 {
+    [] (uint8_t *, uint8_t) { return 0; }
+  };
+  rw_status clean_memory(void);
 
   // Attributes
   bool data_is_read_flag{false};
