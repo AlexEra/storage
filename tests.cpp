@@ -101,6 +101,15 @@ int main() {
     }
   }
 
+  /**
+   * 1. read data: set default, because there are no any data
+   * 2. write data
+   * 3. set zero to metadata, repeat reading
+   * 4. set new data
+   * 5. write new data
+   * 6. read data again
+   */
+
   status = st.read_data_structure(&mdata_0, (uint8_t *) &param_0);
   std::cout << (int) status << '\n';
   if (status == fs::Storage::rw_status::NO_DATA) {
