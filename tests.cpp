@@ -6,7 +6,7 @@
 typedef struct __attribute__((__packed__)) test_data_t {
   uint8_t val_0;
   uint8_t val_1;
-  uint16_t offset;
+  uint16_t rewrite_counter;
   uint8_t crc8;
 } test_data_t;
 
@@ -107,6 +107,7 @@ int main() {
     // set default values
     param_0.val_0 = 66;
     param_0.val_1 = 42;
+    param_0.rewrite_counter = 0;
   } else {
     std::cout << "Something went wrong\n";
   }
