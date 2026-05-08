@@ -169,5 +169,13 @@ int main() {
   // }
   // std::cout << "CRC = " << (int)res << '\n';
 
+  // read param_0 again
+  status = st.read_data_structure(&mdata_0, (uint8_t *) &param_0);
+  if (status != fs::Storage::rw_status::OK) {
+    std::cout << "Error: " << (int) status << '\n';
+  } else {
+    std::cout << "param_0 was read\n";
+  }
+
   return 0;
 }
