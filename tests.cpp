@@ -112,5 +112,16 @@ int main() {
     std::cout << "Something went wrong\n";
   }
 
+  status = st.read_data_structure(&mdata_1, (uint8_t *) &param_1);
+  std::cout << (int) status << '\n';
+  if (status == fs::Storage::rw_status::NO_DATA) {
+    // set default values
+    param_1.val_0 = 146;
+    param_1.val_1 = 69;
+    param_1.rewrite_counter = 0;
+  } else {
+    std::cout << "Something went wrong\n";
+  }
+
   return 0;
 }
