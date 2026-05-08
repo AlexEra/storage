@@ -144,7 +144,7 @@ Storage::rw_status Storage::write_data_structure(
   uint16_t sector_index_backup = p_mdata->current_sector;
   // update crc8
   *(p_data + p_mdata->data_size - 1) = compute_crc8( // XXX: last byte should be CRC8
-    (uint8_t *) &p_data, sizeof(p_mdata->data_size) - 2
+    p_data, p_mdata->data_size - 1
   );
   // check free space before writing
   if (

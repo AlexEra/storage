@@ -11,7 +11,7 @@ typedef struct __attribute__((__packed__)) test_data_t {
 } test_data_t;
 
 namespace fs = flash_storage;
-uint8_t test_mem[sizeof(test_data_t)][fs::sector_size];
+uint8_t test_mem[fs::sector_size][sizeof(test_data_t)];
 
 int main() {
   fs::Storage st;
@@ -132,6 +132,26 @@ int main() {
   } else {
     std::cout << "Something went wrong\n";
   }
+
+  status = st.write_data_structure(&mdata_0, (uint8_t *) &param_0);
+  if (status != fs::Storage::rw_status::OK) {
+    std::cout << "Error: " << (int) status << '\n';
+  } else {
+    std::cout << "param_0 was written\n";
+  }
+
+  for (auto &raw : test_mem) {
+    for (auto &value : raw) {
+      std::cout << (int) value << ' ';
+    }
+    std::cout << std::endl;
+  }
+
+  // uint8_t res{0};
+  // for (uint8_t *ptr = (uint8_t *) &param_0; ptr < (((uint8_t *) &param_0) + offsetof(test_data_t, crc8)); ptr++) {
+  //   res ^= *ptr;
+  // }
+  // std::cout << "CRC = " << (int)res << '\n';
 
   return 0;
 }
