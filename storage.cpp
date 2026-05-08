@@ -139,7 +139,7 @@ Storage::rw_status Storage::write_data_structure(
     return rw_status::DATA_SIZE_ERROR;
   }
 
-  uint16_t offest_backup = p_mdata->data_offset;
+  uint16_t offset_backup = p_mdata->data_offset;
   uint16_t rewrite_counter_backup = p_mdata->sector_rewrite_counter;
   uint16_t sector_index_backup = p_mdata->current_sector;
   // update crc8
@@ -191,7 +191,7 @@ Storage::rw_status Storage::write_data_structure(
     )
   ) {
     // restore origin values
-    p_mdata->data_offset = offest_backup;
+    p_mdata->data_offset = offset_backup;
     p_mdata->sector_rewrite_counter = rewrite_counter_backup;
     p_mdata->current_sector = sector_index_backup;
     return rw_status::WRITE_DATA_FAILED;
