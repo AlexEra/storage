@@ -11,7 +11,16 @@ typedef struct __attribute__((__packed__)) test_data_t {
 } test_data_t;
 
 namespace fs = flash_storage;
-uint8_t test_mem[fs::sector_size][sizeof(test_data_t)];
+uint8_t test_mem[fs::max_sectors_amount][sizeof(test_data_t)];
+
+void print_test_mem(void) {
+  for (auto &raw : test_mem) {
+    for (auto &value : raw) {
+      std::cout << (int) value << ' ';
+    }
+    std::cout << std::endl;
+  }
+}
 
 int main() {
   fs::Storage st;
@@ -111,6 +120,7 @@ int main() {
    * 7. check sector rewrite
    */
 
+  // read param_0
   status = st.read_data_structure(&mdata_0, (uint8_t *) &param_0);
   std::cout << (int) status << '\n';
   if (status == fs::Storage::rw_status::NO_DATA) {
@@ -122,6 +132,7 @@ int main() {
     std::cout << "Something went wrong\n";
   }
 
+  // read param_1
   status = st.read_data_structure(&mdata_1, (uint8_t *) &param_1);
   std::cout << (int) status << '\n';
   if (status == fs::Storage::rw_status::NO_DATA) {
@@ -133,19 +144,24 @@ int main() {
     std::cout << "Something went wrong\n";
   }
 
+  // write param_0
   status = st.write_data_structure(&mdata_0, (uint8_t *) &param_0);
   if (status != fs::Storage::rw_status::OK) {
     std::cout << "Error: " << (int) status << '\n';
   } else {
     std::cout << "param_0 was written\n";
   }
+  print_test_mem();
+  std::cout << '\n';
 
-  for (auto &raw : test_mem) {
-    for (auto &value : raw) {
-      std::cout << (int) value << ' ';
-    }
-    std::cout << std::endl;
+  // write param_1
+  status = st.write_data_structure(&mdata_1, (uint8_t *) &param_1);
+  if (status != fs::Storage::rw_status::OK) {
+    std::cout << "Error: " << (int) status << '\n';
+  } else {
+    std::cout << "param_1 was written\n";
   }
+  print_test_mem();
 
   // uint8_t res{0};
   // for (uint8_t *ptr = (uint8_t *) &param_0; ptr < (((uint8_t *) &param_0) + offsetof(test_data_t, crc8)); ptr++) {

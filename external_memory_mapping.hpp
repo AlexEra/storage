@@ -10,7 +10,7 @@
 namespace external_mem_map {
 
 constexpr uint32_t  sector_size                   = 10; // TODO: set to 4096 for release
-constexpr uint16_t  max_sectors_amount            = 2;  // TODO: set to 8192 (?) for 32 MB flash
+constexpr uint16_t  max_sectors_amount            = 10;  // TODO: set to 8192 (?) for 32 MB flash
 constexpr uint8_t   sector_rewrite_limit          = 5;  // variable 
 
 static_assert(sector_rewrite_limit, "Sectors rewrite limit have to be >= 1");
