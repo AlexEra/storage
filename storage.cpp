@@ -73,7 +73,7 @@ Storage::rw_status Storage::read_data_structure(
   }
 
   rw_status rw_status;
-  if (!data_is_read_flag) {
+  if (!p_mdata->data_is_read_flag) {
     size_t offset{0};
     bool read_status{false};
     uint16_t prev_sector{p_mdata->start_sector};
@@ -107,7 +107,7 @@ Storage::rw_status Storage::read_data_structure(
         // there is correct data, read it again
         read_status = read_bytes(prev_sector, prev_offset, p_data, p_mdata->data_size);
         if (read_status) {
-          data_is_read_flag = true;
+          p_mdata->data_is_read_flag = true;
           return rw_status::OK;
         }
         return rw_status::READ_FAILED;

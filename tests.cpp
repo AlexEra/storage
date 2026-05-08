@@ -32,7 +32,8 @@ int main() {
     .current_sector = 0,
     .data_offset = 0,
     .data_size = sizeof(test_data_t),
-    .sector_rewrite_counter = 0
+    .sector_rewrite_counter = 0,
+    .data_is_read_flag = false
   },
   mdata_1 {
     .start_sector = 4,
@@ -40,7 +41,8 @@ int main() {
     .current_sector = 4,
     .data_offset = 0,
     .data_size = sizeof(test_data_t),
-    .sector_rewrite_counter = 0
+    .sector_rewrite_counter = 0,
+    .data_is_read_flag = false
   };
 
   st.set_erase_all([&] {

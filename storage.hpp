@@ -71,9 +71,6 @@ private:
     [] (uint8_t *, uint8_t) { return 0; }
   };
   rw_status clean_memory(void);
-
-  // Attributes
-  bool data_is_read_flag{false};
 };
 
 } // namespace flash_storage
