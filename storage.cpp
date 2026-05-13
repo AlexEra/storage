@@ -102,7 +102,6 @@ Storage::rw_status Storage::read_data_structure(
           p_mdata->current_sector = p_mdata->start_sector;
           p_mdata->data_offset = 0;
           p_mdata->sector_rewrite_counter = 0;
-          p_mdata->data_is_read_flag = true;
           // return to show that there should be written default values in p_data
           return rw_status::NO_DATA;
         }
@@ -148,13 +147,15 @@ Storage::rw_status Storage::write_data_structure(
   uint16_t offset_backup = p_mdata->data_offset;
   uint16_t rewrite_counter_backup = p_mdata->sector_rewrite_counter;
   uint16_t sector_index_backup = p_mdata->current_sector;
-  // update crc8
-  p_data->crc8 = compute_crc8((uint8_t *) &p_data->rewrite_counter, p_mdata->data_size - 1);
+  int32_t free_bytes;
+  if (p_mdata->data_is_read_flag) {
+    // data has been already written
+    free_bytes = (int32_t) external_mem_map::sector_size - p_mdata->data_offset - p_mdata->data_size;
+  } else {
+    free_bytes = (int32_t) external_mem_map::sector_size - p_mdata->data_offset;
+  }
   // check free space before writing
-  if (
-    // FIXME: check left free bytes - it depends on written data, also on offset, that is already counted
-    (external_mem_map::sector_size - p_mdata->data_offset /* - p_mdata->data_size */) < p_mdata->data_size
-  ) {
+  if (free_bytes < p_mdata->data_size) {
     // not enought free space
     if (p_mdata->sector_rewrite_counter == external_mem_map::sector_rewrite_limit) {
       // go to the next sector or start from the beginning
@@ -185,7 +186,8 @@ Storage::rw_status Storage::write_data_structure(
   }
   // update sector rewrite counter
   p_data->rewrite_counter = p_mdata->sector_rewrite_counter;
-
+  // update crc8
+  p_data->crc8 = compute_crc8((uint8_t *) &p_data->rewrite_counter, p_mdata->data_size - 1);
   // write data
   if (
     !write_bytes(
@@ -201,6 +203,7 @@ Storage::rw_status Storage::write_data_structure(
     p_mdata->current_sector = sector_index_backup;
     return rw_status::WRITE_DATA_FAILED;
   }
+  p_mdata->data_is_read_flag = true;
   // TODO: read data and compare for checking write operation
   return rw_status::OK;
 }

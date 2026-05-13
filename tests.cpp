@@ -36,7 +36,7 @@ int main() {
   },
   mdata_1 {
     .start_sector = 4,
-    .end_sector = 8,
+    .end_sector = 5,
     .current_sector = 4,
     .data_offset = 0,
     .data_size = sizeof(test_data_t),
@@ -205,6 +205,45 @@ int main() {
     std::cout << "Data offset: " << (int) mdata_1.data_offset << '\n';
   }
   std::cout << '\n';
+
+  // read param_1 again
+  mdata_1.data_is_read_flag = false; // imitate rebooting
+  status = st.read_data_structure(&mdata_1, &param_1);
+  if (status != fs::Storage::rw_status::OK) {
+    std::cout << "Error: " << (int) status << '\n';
+  } else {
+    std::cout << "param_1 was read again\n";
+    std::cout << "Rewrite counter: " << (int) mdata_1.sector_rewrite_counter << '\n';
+  }
+  std::cout << '\n';
+
+  // write param_1 again, there it should be written to next sector
+  param_1.val_0 = 49;
+  status = st.write_data_structure(&mdata_1, &param_1);
+  if (status != fs::Storage::rw_status::OK) {
+    std::cout << "Error: " << (int) status << '\n';
+  } else {
+    std::cout << "param_1 was written\n";
+    print_test_mem();
+    std::cout << "Rewrite counter: " << (int) mdata_1.sector_rewrite_counter << '\n';
+    std::cout << "Data offset: " << (int) mdata_1.data_offset << '\n';
+  }
+  std::cout << '\n';
+
+  // write param_1 again to increase rewrite_counter and to start writing from the beginning
+  for (auto i = 0; i < 2; i++) {
+    param_1.val_0++;
+    status = st.write_data_structure(&mdata_1, &param_1);
+    if (status != fs::Storage::rw_status::OK) {
+      std::cout << "Error: " << (int) status << '\n';
+    } else {
+      std::cout << "param_1 was written\n";
+      print_test_mem();
+      std::cout << "Rewrite counter: " << (int) mdata_1.sector_rewrite_counter << '\n';
+      std::cout << "Data offset: " << (int) mdata_1.data_offset << '\n';
+    }
+    std::cout << '\n';
+  }
 
   return 0;
 }
