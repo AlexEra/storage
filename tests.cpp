@@ -3,14 +3,13 @@
 #include <algorithm>
 #include "storage.hpp"
 
-typedef struct __attribute__((__packed__)) test_data_t {
+namespace fs = flash_storage;
+
+struct __attribute__((__packed__)) test_data_t : public fs::base_data_t {
   uint8_t val_0;
   uint8_t val_1;
-  uint16_t rewrite_counter;
-  uint8_t crc8;
-} test_data_t;
+};
 
-namespace fs = flash_storage;
 uint8_t test_mem[fs::max_sectors_amount][sizeof(test_data_t)];
 
 void print_test_mem(void) {
@@ -125,7 +124,7 @@ int main() {
    */
 
   // read param_0
-  status = st.read_data_structure(&mdata_0, (uint8_t *) &param_0);
+  status = st.read_data_structure(&mdata_0, &param_0);
   std::cout << (int) status << '\n';
   if (status == fs::Storage::rw_status::NO_DATA) {
     // set default values
@@ -137,7 +136,7 @@ int main() {
   }
 
   // read param_1
-  status = st.read_data_structure(&mdata_1, (uint8_t *) &param_1);
+  status = st.read_data_structure(&mdata_1, &param_1);
   std::cout << (int) status << '\n';
   if (status == fs::Storage::rw_status::NO_DATA) {
     // set default values
@@ -149,7 +148,7 @@ int main() {
   }
 
   // write param_0
-  status = st.write_data_structure(&mdata_0, (uint8_t *) &param_0);
+  status = st.write_data_structure(&mdata_0, &param_0);
   if (status != fs::Storage::rw_status::OK) {
     std::cout << "Error: " << (int) status << '\n';
   } else {
@@ -159,7 +158,7 @@ int main() {
   std::cout << '\n';
 
   // write param_1
-  status = st.write_data_structure(&mdata_1, (uint8_t *) &param_1);
+  status = st.write_data_structure(&mdata_1, &param_1);
   if (status != fs::Storage::rw_status::OK) {
     std::cout << "Error: " << (int) status << '\n';
   } else {
@@ -175,7 +174,7 @@ int main() {
   // std::cout << "CRC = " << (int)res << '\n';
 
   // read param_0 again
-  status = st.read_data_structure(&mdata_0, (uint8_t *) &param_0);
+  status = st.read_data_structure(&mdata_0, &param_0);
   if (status != fs::Storage::rw_status::OK) {
     std::cout << "Error: " << (int) status << '\n';
   } else {
@@ -185,7 +184,7 @@ int main() {
 
   // read param_1 again
   mdata_1.data_is_read_flag = false; // imitate rebooting
-  status = st.read_data_structure(&mdata_1, (uint8_t *) &param_1);
+  status = st.read_data_structure(&mdata_1, &param_1);
   if (status != fs::Storage::rw_status::OK) {
     std::cout << "Error: " << (int) status << '\n';
   } else {
@@ -196,7 +195,7 @@ int main() {
   // set and write new param_1
   param_1.val_0 = 83;
   param_1.val_1 = 30;
-  status = st.write_data_structure(&mdata_1, (uint8_t *) &param_1);
+  status = st.write_data_structure(&mdata_1, &param_1);
   if (status != fs::Storage::rw_status::OK) {
     std::cout << "Error: " << (int) status << '\n';
   } else {
