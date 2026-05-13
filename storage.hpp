@@ -11,9 +11,15 @@ namespace flash_storage {
 
 using namespace external_mem_map;
 
+struct __attribute__((__packed__)) base_data_t {
+  uint8_t crc8;
+  uint16_t rewrite_counter;
+};
+
 class Storage {
 public:
-  enum class rw_status {
+  enum class rw_status : int8_t {
+    BASE_STRUCT_ERROR     = -10,
     CRC8_ERROR            = -9,
     ERASE_DATA_FAILED     = -8,
     NO_DATA               = -7,
@@ -46,11 +52,10 @@ public:
     std::function<uint8_t(uint8_t *, uint8_t)> f
   );
   // r/w operations
-  Storage::rw_status read_data_structure(parameter_metadata_t *p_mdata, uint8_t *p_data);
-  Storage::rw_status write_data_structure(parameter_metadata_t *p_mdata, uint8_t *p_data);
+  Storage::rw_status read_data_structure(parameter_metadata_t *p_mdata, base_data_t *p_data);
+  Storage::rw_status write_data_structure(parameter_metadata_t *p_mdata, base_data_t *p_data);
 
 private:
-
   // Methods
   std::function<bool(uint8_t, uint32_t, uint8_t*, size_t)> read_bytes {
     // sector number, offset, buffer pointer, buffer size

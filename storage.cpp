@@ -53,7 +53,7 @@ bool Storage::set_compute_crc8(
 
 Storage::rw_status Storage::read_data_structure(
   parameter_metadata_t *p_mdata,
-  uint8_t *p_data
+  base_data_t *p_data
 ) {
   if (
     read_bytes == nullptr || p_mdata == nullptr ||
@@ -71,6 +71,9 @@ Storage::rw_status Storage::read_data_structure(
   if (!p_mdata->data_size) {
     return rw_status::DATA_SIZE_ERROR;
   }
+  if (p_mdata->data_size <= sizeof(base_data_t)) {
+    return rw_status::BASE_STRUCT_ERROR;
+  }
 
   rw_status rw_status;
   if (!p_mdata->data_is_read_flag) {
@@ -79,14 +82,13 @@ Storage::rw_status Storage::read_data_structure(
     uint16_t prev_offset{0};
     for (uint16_t sector{p_mdata->start_sector}; sector <= p_mdata->end_sector; sector++) {
       for (size_t offset{0}; offset <= (sector_size - p_mdata->data_size); offset += p_mdata->data_size) {
-        read_status = read_bytes(sector, offset, p_data, p_mdata->data_size);
-        if (!compute_crc8(p_data, p_mdata->data_size) && read_status) {
+        read_status = read_bytes(sector, offset, (uint8_t *) p_data, p_mdata->data_size);
+        if (!compute_crc8((uint8_t *) p_data, p_mdata->data_size) && read_status) {
           // data is correct
           prev_offset = offset;
           p_mdata->current_sector = sector;
           p_mdata->data_offset = offset;
-          // XXX: rewrite counter must be the pre-last byte
-          p_mdata->sector_rewrite_counter = *((uint16_t *)(p_data + p_mdata->data_size - 3));
+          p_mdata->sector_rewrite_counter = p_data->rewrite_counter;
           continue;
         }
         // incorrect data was read
@@ -105,7 +107,7 @@ Storage::rw_status Storage::read_data_structure(
           return rw_status::NO_DATA;
         }
         // there is correct data, read it again
-        read_status = read_bytes(prev_sector, prev_offset, p_data, p_mdata->data_size);
+        read_status = read_bytes(prev_sector, prev_offset, (uint8_t *) p_data, p_mdata->data_size);
         if (read_status) {
           p_mdata->data_is_read_flag = true;
           return rw_status::OK;
@@ -121,7 +123,7 @@ Storage::rw_status Storage::read_data_structure(
 
 Storage::rw_status Storage::write_data_structure(
   parameter_metadata_t *p_mdata,
-  uint8_t *p_data
+  base_data_t *p_data
 ) {
   if (
     p_data == nullptr || p_mdata == nullptr ||
@@ -139,14 +141,15 @@ Storage::rw_status Storage::write_data_structure(
   if (!p_mdata->data_size) {
     return rw_status::DATA_SIZE_ERROR;
   }
+  if (p_mdata->data_size <= sizeof(base_data_t)) {
+    return rw_status::BASE_STRUCT_ERROR;
+  }
 
   uint16_t offset_backup = p_mdata->data_offset;
   uint16_t rewrite_counter_backup = p_mdata->sector_rewrite_counter;
   uint16_t sector_index_backup = p_mdata->current_sector;
   // update crc8
-  *(p_data + p_mdata->data_size - 1) = compute_crc8( // XXX: last byte should be CRC8
-    p_data, p_mdata->data_size - 1
-  );
+  p_data->crc8 = compute_crc8((uint8_t *) &p_data->rewrite_counter, p_mdata->data_size - 1);
   // check free space before writing
   if (
     // FIXME: check left free bytes - it depends on written data, also on offset, that is already counted
@@ -174,21 +177,21 @@ Storage::rw_status Storage::write_data_structure(
         return rw_status::ERASE_DATA_FAILED;
       }
       p_mdata->data_offset = 0;
-      p_mdata->sector_rewrite_counter++; // FIXME: increase it after successful writing
+      p_mdata->sector_rewrite_counter++;
     }
   } else {
     // continue to write to current sector 
     p_mdata->data_offset += p_mdata->data_size;
   }
   // update sector rewrite counter
-  *(p_data + p_mdata->data_size - 2) = p_mdata->sector_rewrite_counter;
+  p_data->rewrite_counter = p_mdata->sector_rewrite_counter;
 
   // write data
   if (
     !write_bytes(
       p_mdata->current_sector,
       p_mdata->data_offset,
-      p_data,
+      (uint8_t *) p_data,
       p_mdata->data_size
     )
   ) {

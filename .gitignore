@@ -3,6 +3,7 @@
 *.out
 *.exe
 /build
+.vscode/tasks.json
 
 CMakeLists.txt.user
 CMakeCache.txt
