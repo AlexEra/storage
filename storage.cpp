@@ -75,7 +75,6 @@ Storage::rw_status Storage::read_data_structure(
     return rw_status::BASE_STRUCT_ERROR;
   }
 
-  rw_status rw_status;
   if (!p_mdata->data_is_read_flag) {
     bool read_status{false};
     uint16_t prev_sector{p_mdata->start_sector};
