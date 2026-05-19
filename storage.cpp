@@ -182,7 +182,7 @@ Storage::rw_status Storage::write_data_structure(
       p_mdata->data_offset = 0;
       p_mdata->sector_rewrite_counter++;
     }
-  } else {
+  } else if (p_mdata->data_is_read_flag) {
     // continue to write to current sector 
     p_mdata->data_offset += p_mdata->data_size;
   }
@@ -205,7 +205,7 @@ Storage::rw_status Storage::write_data_structure(
     p_mdata->current_sector = sector_index_backup;
     return rw_status::WRITE_DATA_FAILED;
   }
-  p_mdata->data_is_read_flag = true;
+  p_mdata->data_is_read_flag = true; // FIXME: it should be set when data is read, not written
   // TODO: read data and compare for checking write operation
   return rw_status::OK;
 }
