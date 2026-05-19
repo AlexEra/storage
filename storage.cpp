@@ -205,7 +205,7 @@ Storage::rw_status Storage::write_data_structure(
     p_mdata->current_sector = sector_index_backup;
     return rw_status::WRITE_DATA_FAILED;
   }
-  p_mdata->data_is_read_flag = true; // FIXME: it should be set when data is read, not written
+  p_mdata->data_is_read_flag = true;
   // TODO: read data and compare for checking write operation
   return rw_status::OK;
 }
