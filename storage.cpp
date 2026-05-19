@@ -90,6 +90,9 @@ Storage::rw_status Storage::read_data_structure(
           p_mdata->sector_rewrite_counter = p_data->rewrite_counter;
           continue;
         }
+        if (!read_status) {
+          return rw_status::READ_FAILED;
+        }
         // incorrect data was read
         if ((sector == p_mdata->start_sector) && !offset) {
           // beginning of the memory
