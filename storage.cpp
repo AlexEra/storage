@@ -75,7 +75,6 @@ Storage::rw_status Storage::read_data_structure(
     return rw_status::BASE_STRUCT_ERROR;
   }
 
-  rw_status rw_status;
   if (!p_mdata->data_is_read_flag) {
     bool read_status{false};
     uint16_t prev_sector{p_mdata->start_sector};
@@ -90,6 +89,9 @@ Storage::rw_status Storage::read_data_structure(
           p_mdata->data_offset = offset;
           p_mdata->sector_rewrite_counter = p_data->rewrite_counter;
           continue;
+        }
+        if (!read_status) {
+          return rw_status::READ_FAILED;
         }
         // incorrect data was read
         if ((sector == p_mdata->start_sector) && !offset) {
@@ -180,7 +182,7 @@ Storage::rw_status Storage::write_data_structure(
       p_mdata->data_offset = 0;
       p_mdata->sector_rewrite_counter++;
     }
-  } else {
+  } else if (p_mdata->data_is_read_flag) {
     // continue to write to current sector 
     p_mdata->data_offset += p_mdata->data_size;
   }
