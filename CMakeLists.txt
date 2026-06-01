@@ -1,0 +1,20 @@
+cmake_minimum_required(VERSION 3.22)
+
+set(CMAKE_C_STANDARD 11)
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_C_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_C_EXTENSIONS ON)
+
+set(CMAKE_PROJECT_NAME storage)
+
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
+project(${CMAKE_PROJECT_NAME})
+
+enable_language(CXX C ASM)
+
+add_executable(${CMAKE_PROJECT_NAME}
+    tests.cpp
+    storage.cpp
+)
