@@ -36,7 +36,7 @@ public:
   // setters
   bool set_read_bytes(
     // sector number, offset, buffer pointer, buffer size
-    std::function<bool(uint8_t, uint32_t, uint8_t*, size_t)> f
+    std::function<bool(uint32_t, uint32_t, uint8_t*, size_t)> f
   );
   bool set_write_bytes(
     // sector number, offset, buffer pointer, buffer size
@@ -57,13 +57,13 @@ public:
 
 private:
   // Methods
-  std::function<bool(uint8_t, uint32_t, uint8_t*, size_t)> read_bytes {
+  std::function<bool(uint32_t, uint32_t, uint8_t*, size_t)> read_bytes {
     // sector number, offset, buffer pointer, buffer size
-    [] (uint8_t, uint32_t, uint8_t*, size_t) { return false; }
+    [] (uint32_t, uint32_t, uint8_t*, size_t) { return false; }
   };
-  std::function<bool(uint8_t, uint32_t, uint8_t*, size_t)> write_bytes {
+  std::function<bool(uint32_t, uint32_t, uint8_t*, size_t)> write_bytes {
     // sector number, offset, buffer pointer, buffer size
-    [] (uint8_t, uint32_t, uint8_t*, size_t) { return false; }
+    [] (uint32_t, uint32_t, uint8_t*, size_t) { return false; }
   };
   std::function<bool(uint32_t, uint32_t)> erase_sectors {
     // sector number, sectors amount to erase

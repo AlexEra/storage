@@ -3,7 +3,7 @@
 using namespace flash_storage;
 
 bool Storage::set_read_bytes(
-  std::function<bool(uint8_t, uint32_t, uint8_t*, size_t)> f
+  std::function<bool(uint32_t, uint32_t, uint8_t*, size_t)> f
 ) {
   if (f == nullptr) {
     return false;
