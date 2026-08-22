@@ -3,7 +3,7 @@
 using namespace flash_storage;
 
 bool Storage::set_read_bytes(
-  std::function<bool(uint8_t, uint32_t, uint8_t*, size_t)> f
+  std::function<bool(uint32_t, uint32_t, uint8_t*, size_t)> f
 ) {
   if (f == nullptr) {
     return false;
@@ -82,7 +82,10 @@ Storage::rw_status Storage::read_data_structure(
     for (uint16_t sector{p_mdata->start_sector}; sector <= p_mdata->end_sector; sector++) {
       for (size_t offset{0}; offset <= (sector_size - p_mdata->data_size); offset += p_mdata->data_size) {
         read_status = read_bytes(sector, offset, (uint8_t *) p_data, p_mdata->data_size);
-        if (!compute_crc8((uint8_t *) p_data, p_mdata->data_size) && read_status) {
+        if (
+          (compute_crc8((uint8_t *) &p_data->rewrite_counter, p_mdata->data_size - 1) == p_data->crc8) &&
+          read_status
+        ) {
           // data is correct
           prev_offset = offset;
           p_mdata->current_sector = sector;
