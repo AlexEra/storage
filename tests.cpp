@@ -58,9 +58,6 @@ int main() {
     for (uint8_t i{0}; i < sz; i++) {
       res ^= ptr_arr[i];
     }
-    /* std::cout << "_____________________________\n";
-    std::cout << "CRC8: " << (int) res << '\n';
-    std::cout << "_____________________________\n"; */
     return res;
   });
 
@@ -104,24 +101,12 @@ int main() {
     return true;
   });
 
-  // TODO: firstly, test basic functions
-  // TODO: secondly, test Storage class methods
-
   // clean memory - set 0xFF
   for (auto &raw : test_mem) {
     for (auto &value : raw) {
       value = 0xFF;
     }
   }
-
-  /**
-   * 1. read data: set default, because there are no any data
-   * 2. write data
-   * 3. set zero to metadata, repeat reading
-   * 4. set and write new data
-   * 5. read data again
-   * 6. check sector rewrite
-   */
 
   // read param_0
   status = st.read_data_structure(&mdata_0, &param_0);
@@ -166,12 +151,6 @@ int main() {
   }
   print_test_mem();
   std::cout << '\n';
-
-  // uint8_t res{0};
-  // for (uint8_t *ptr = (uint8_t *) &param_0; ptr < (((uint8_t *) &param_0) + offsetof(test_data_t, crc8)); ptr++) {
-  //   res ^= *ptr;
-  // }
-  // std::cout << "CRC = " << (int)res << '\n';
 
   // read param_0 again
   status = st.read_data_structure(&mdata_0, &param_0);
