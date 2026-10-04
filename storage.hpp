@@ -94,19 +94,19 @@ struct StructStorage {
     parameter_metadata_t *p_mdata, base_data_t *p_data
   ) {
     if (p_mdata == nullptr || p_data == nullptr) {
-      return rw_status::NULLPTR_ERROR;
+      return Storage::rw_status::NULLPTR_ERROR;
     }
     if (p_mdata->end_sector < p_mdata->start_sector) {
-      return rw_status::SECTORS_LIMITS_ERROR;
+      return Storage::rw_status::SECTORS_LIMITS_ERROR;
     }
     if (p_mdata->data_offset > sector_size) {
-      return rw_status::DATA_OFFSET_ERROR;
+      return Storage::rw_status::DATA_OFFSET_ERROR;
     }
     if (!p_mdata->data_size) {
-      return rw_status::DATA_SIZE_ERROR;
+      return Storage::rw_status::DATA_SIZE_ERROR;
     }
     if (p_mdata->data_size <= sizeof(base_data_t)) {
-      return rw_status::BASE_STRUCT_ERROR;
+      return Storage::rw_status::BASE_STRUCT_ERROR;
     }
 
     if (!p_mdata->data_is_read_flag) {
@@ -128,54 +128,54 @@ struct StructStorage {
             continue;
           }
           if (!read_status) {
-            return rw_status::READ_FAILED;
+            return Storage::rw_status::READ_FAILED;
           }
           // incorrect data was read
           if ((sector == p_mdata->start_sector) && !offset) {
             // beginning of the memory
             // clear memory, there is no useful data
             if (!erase_sectors(p_mdata->start_sector, p_mdata->end_sector - p_mdata->start_sector + 1)) {
-              return rw_status::ERASE_DATA_FAILED;
+              return Storage::rw_status::ERASE_DATA_FAILED;
             }
             // set default values
             p_mdata->current_sector = p_mdata->start_sector;
             p_mdata->data_offset = 0;
             p_mdata->sector_rewrite_counter = 0;
             // return to show that there should be written default values in p_data
-            return rw_status::NO_DATA;
+            return Storage::rw_status::NO_DATA;
           }
           // there is correct data, read it again
           read_status = read_bytes(prev_sector, prev_offset, (uint8_t *) p_data, p_mdata->data_size);
           if (read_status) {
             p_mdata->data_is_read_flag = true;
-            return rw_status::OK;
+            return Storage::rw_status::OK;
           }
-          return rw_status::READ_FAILED;
+          return Storage::rw_status::READ_FAILED;
         }
         prev_sector = sector;
       }
-      return rw_status::READ_FAILED;
+      return Storage::rw_status::READ_FAILED;
     }
-    return rw_status::OK;
+    return Storage::rw_status::OK;
   }
 
   Storage::rw_status write_data_structure(
     parameter_metadata_t *p_mdata, base_data_t *p_data
   ) {
     if (p_data == nullptr || p_mdata == nullptr) {
-      return rw_status::NULLPTR_ERROR;
+      return Storage::rw_status::NULLPTR_ERROR;
     }
     if (p_mdata->end_sector < p_mdata->start_sector) {
-      return rw_status::SECTORS_LIMITS_ERROR;
+      return Storage::rw_status::SECTORS_LIMITS_ERROR;
     }
     if (p_mdata->data_offset > sector_size) {
-      return rw_status::DATA_OFFSET_ERROR;
+      return Storage::rw_status::DATA_OFFSET_ERROR;
     }
     if (!p_mdata->data_size) {
-      return rw_status::DATA_SIZE_ERROR;
+      return Storage::rw_status::DATA_SIZE_ERROR;
     }
     if (p_mdata->data_size <= sizeof(base_data_t)) {
-      return rw_status::BASE_STRUCT_ERROR;
+      return Storage::rw_status::BASE_STRUCT_ERROR;
     }
 
     uint16_t offset_backup{p_mdata->data_offset};
@@ -197,7 +197,7 @@ struct StructStorage {
           // start from the beginning
           // clear available memory
           if (!erase_sectors(p_mdata->start_sector, p_mdata->end_sector)) {
-            return rw_status::ERASE_DATA_FAILED;
+            return Storage::rw_status::ERASE_DATA_FAILED;
           }
           p_mdata->current_sector = p_mdata->start_sector;
         } else {
@@ -209,7 +209,7 @@ struct StructStorage {
       } else {
         // reuse sector
         if (!erase_sectors(p_mdata->current_sector, p_mdata->current_sector)) {
-          return rw_status::ERASE_DATA_FAILED;
+          return Storage::rw_status::ERASE_DATA_FAILED;
         }
         p_mdata->data_offset = 0;
         p_mdata->sector_rewrite_counter++;
@@ -235,11 +235,11 @@ struct StructStorage {
       p_mdata->data_offset = offset_backup;
       p_mdata->sector_rewrite_counter = rewrite_counter_backup;
       p_mdata->current_sector = sector_index_backup;
-      return rw_status::WRITE_DATA_FAILED;
+      return Storage::rw_status::WRITE_DATA_FAILED;
     }
     p_mdata->data_is_read_flag = true;
     // TODO: read data and compare for checking write operation
-    return rw_status::OK;
+    return Storage::rw_status::OK;
   }
 };
 
