@@ -14,6 +14,10 @@ project(${CMAKE_PROJECT_NAME})
 
 enable_language(CXX C ASM)
 
+add_definitions(
+    -DTEMPLATE_STORAGE_TEST
+)
+
 add_executable(${CMAKE_PROJECT_NAME}
     tests.cpp
     storage.cpp
