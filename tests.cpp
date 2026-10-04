@@ -3,6 +3,11 @@
 #include <algorithm>
 #include "storage.hpp"
 
+/* TODO:
+- measure time
+- check memory consumption
+*/
+
 namespace fs = flash_storage;
 
 struct __attribute__((__packed__)) test_data_t : public fs::base_data_t {
