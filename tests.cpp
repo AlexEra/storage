@@ -21,8 +21,78 @@ void print_test_mem(void) {
   }
 }
 
+bool read(
+  uint32_t sec_num, uint32_t offs,
+  uint8_t *ptr_buf, size_t buf_size
+) {
+  if (sec_num >= external_mem_map::max_sectors_amount) {
+    return false;
+  } else if (offs > (fs::sector_size - sizeof(test_data_t))) {
+    return false;
+  } else if (buf_size > sizeof(test_data_t)) {
+    return false;
+  }
+  memcpy(ptr_buf, test_mem[sec_num], buf_size);
+  return true;
+}
+
+bool write(
+  uint32_t sector_number, uint32_t offset,
+  uint8_t *p_buf, size_t buf_size
+) {
+  if (
+    (sector_number > external_mem_map::max_sectors_amount) ||
+    (offset > external_mem_map::sector_size) ||
+    (p_buf == nullptr) || (buf_size > external_mem_map::sector_size)
+  ) {
+    return false;
+  }
+  memcpy(test_mem[sector_number], p_buf, buf_size);
+  return true;
+}
+
+bool erase_all(void) {
+  for (auto &r : test_mem) {
+    for (auto &c : r) {
+      c = 0xFF;
+    }
+  }
+  return true;
+}
+
+bool erase_sectors(uint32_t sector_num, uint32_t sectors_to_erase) {
+  if (sector_num >= external_mem_map::max_sectors_amount) {
+    return false;
+  }
+  uint32_t s_lim = sectors_to_erase + sector_num;
+  for (uint32_t s{sector_num}; s < s_lim; s++) {
+    if (s >= external_mem_map::max_sectors_amount) {
+      break;
+    }
+    for (auto &c : test_mem[s]) {
+      c = 0xFF;
+    }
+  }
+  return true;
+}
+
+uint8_t compute_crc8(uint8_t *ptr_arr, uint8_t sz) {
+  uint8_t res{0};
+  for (uint8_t i{0}; i < sz; i++) {
+    res ^= ptr_arr[i];
+  }
+  return res;
+}
+#ifdef TEMPLATE_STORAGE_TEST
+
+#endif /* TEMPLATE_STORAGE_TEST */
+
 int main() {
+#ifndef TEMPLATE_STORAGE_TEST
   fs::Storage st;
+#else
+  fs::StructStorage<read, write, erase_sectors, erase_all, compute_crc8> st;
+#endif
   fs::Storage::rw_status status;
   test_data_t param_0, param_1;
   external_mem_map::parameter_metadata_t mdata_0 {
@@ -44,6 +114,7 @@ int main() {
     .data_is_read_flag = false
   };
 
+#ifndef TEMPLATE_STORAGE_TEST
   st.set_erase_all([&] {
     for (auto &r : test_mem) {
       for (auto &c : r) {
@@ -100,6 +171,7 @@ int main() {
     memcpy(test_mem[sector_number], p_buf, buf_size);
     return true;
   });
+#endif /* TEMPLATE_STORAGE_TEST */
 
   // clean memory - set 0xFF
   for (auto &raw : test_mem) {
