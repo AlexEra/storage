@@ -116,9 +116,9 @@ struct StructStorage {
       for (uint16_t sector{p_mdata->start_sector}; sector <= p_mdata->end_sector; sector++) {
         for (size_t offset{0}; offset <= (sector_size - p_mdata->data_size); offset += p_mdata->data_size) {
           read_status = read_bytes(sector, offset, (uint8_t *) p_data, p_mdata->data_size);
-          if (
-            (compute_crc8((uint8_t *) &p_data->rewrite_counter, p_mdata->data_size - 1) == p_data->crc8) &&
-            read_status
+          if ((compute_crc8(
+              reinterpret_cast<uint8_t *>(&p_data) + sizeof(p_data->crc8), p_mdata->data_size - 1
+            ) == p_data->crc8) && read_status
           ) {
             // data is correct
             prev_offset = offset;
@@ -221,7 +221,9 @@ struct StructStorage {
     // update sector rewrite counter
     p_data->rewrite_counter = p_mdata->sector_rewrite_counter;
     // update crc8
-    p_data->crc8 = compute_crc8((uint8_t *) &p_data->rewrite_counter, p_mdata->data_size - 1);
+    p_data->crc8 = compute_crc8(
+      reinterpret_cast<uint8_t *>(&p_data) + sizeof(p_data->crc8), p_mdata->data_size - 1
+    );
     // write data
     if (
       !write_bytes(
