@@ -78,8 +78,6 @@ private:
   rw_status clean_memory(void);
 };
 
-} // namespace flash_storage
-
 /**
  TODO:
   * add check (m.b. static_assert) for one case, where erase is nullptr and at least one of the rw functions is nullptr
@@ -244,5 +242,7 @@ struct StructStorage {
     return rw_status::OK;
   }
 };
+
+} // namespace flash_storage
 
 #endif // _STORAGE_HPP_
