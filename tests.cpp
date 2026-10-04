@@ -1,10 +1,9 @@
 #include <iostream>
-#include <assert.h>
 #include <algorithm>
+#include <chrono>
 #include "storage.hpp"
 
 /* TODO:
-- measure time
 - check memory consumption
 */
 
@@ -184,6 +183,8 @@ int main() {
     }
   }
 
+  auto start = std::chrono::high_resolution_clock::now();
+
   // read param_0
   status = st.read_data_structure(&mdata_0, &param_0);
   std::cout << (int) status << '\n';
@@ -299,6 +300,11 @@ int main() {
     }
     std::cout << '\n';
   }
+
+  std::chrono::duration<double, std::milli> elapsed = 
+    std::chrono::high_resolution_clock::now() - start;
+  
+  std::cout << "dt = " << elapsed << '\n';
 
   return 0;
 }
