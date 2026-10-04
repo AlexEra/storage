@@ -21,6 +21,7 @@ void print_test_mem(void) {
   }
 }
 
+#ifdef TEMPLATE_STORAGE_TEST
 bool read(
   uint32_t sec_num, uint32_t offs,
   uint8_t *ptr_buf, size_t buf_size
@@ -83,8 +84,6 @@ uint8_t compute_crc8(uint8_t *ptr_arr, uint8_t sz) {
   }
   return res;
 }
-#ifdef TEMPLATE_STORAGE_TEST
-
 #endif /* TEMPLATE_STORAGE_TEST */
 
 int main() {
