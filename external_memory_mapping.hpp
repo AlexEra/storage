@@ -10,8 +10,8 @@
 namespace external_mem_map {
 
 constexpr uint32_t  sector_size                   = 7; // FIXME: make setable using CMake definition
-constexpr uint16_t  max_sectors_amount            = 2; // FIXME: make setable using CMake definition
-constexpr uint8_t   sector_rewrite_limit          = 2; // FIXME: make setable using CMake definition
+constexpr uint16_t  max_sectors_amount            = 10; // FIXME: make setable using CMake definition
+constexpr uint8_t   sector_rewrite_limit          = 1; // FIXME: make setable using CMake definition
 
 static_assert(sector_rewrite_limit, "Sectors rewrite limit have to be >= 1");
 static_assert(sector_size, "Sector size have to be > 0");
