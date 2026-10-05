@@ -31,11 +31,11 @@ add_definitions(
 
 if(TEMPLATE_STORAGE_TEST)
     add_executable(${CMAKE_PROJECT_NAME}
-        tests.cpp
+        ../tests.cpp
     )
 else()
     add_executable(${CMAKE_PROJECT_NAME}
-        tests.cpp
-        storage.cpp
+        ../tests.cpp
+        ../storage.cpp
     )
 endif()
