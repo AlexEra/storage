@@ -16,7 +16,7 @@ project(${CMAKE_PROJECT_NAME})
 
 enable_language(CXX C ASM)
 
-set(TEMPLATE_STORAGE_TEST)
+set(TEMPLATE_STORAGE_TEST 1)
 
 if(TEMPLATE_STORAGE_TEST)
     add_definitions(-DTEMPLATE_STORAGE_TEST)
