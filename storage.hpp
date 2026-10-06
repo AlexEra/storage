@@ -273,6 +273,10 @@ struct StructStorage {
     // TODO: read data and compare for checking write operation
     return Storage::rw_status::OK;
   }
+
+  bool clean_memory(void) {
+    return erase_all_sectors();
+  }
 };
 
 } // namespace flash_storage
