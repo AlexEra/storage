@@ -3,8 +3,9 @@
 
 #include <functional>
 #include <cstdint>
-#include <string.h>
-
+#if (__cplusplus < 202002L) || (_MSVC_LANG < 202002L)
+#include <type_traits>
+#endif
 #include "external_memory_mapping.hpp"
 
 namespace flash_storage {
@@ -78,16 +79,39 @@ private:
   rw_status clean_memory(void);
 };
 
-/**
- TODO:
-  * add check (m.b. static_assert) for one case, where erase is nullptr and at least one of the rw functions is nullptr
-*/
+namespace func_types {
+  using read_write_t = bool(*)(uint32_t, uint32_t, uint8_t*, size_t);
+  using erase_sectors_t = bool(*)(uint32_t, uint32_t);
+  using erase_all_sectors_t = bool(*)(void);
+  using compute_crc8_t = uint8_t(*)(uint8_t *, uint8_t);
+}
 
-template<bool(*read_bytes)(uint32_t, uint32_t, uint8_t*, size_t),
-  bool(*write_bytes)(uint32_t, uint32_t, uint8_t*, size_t),
-  bool(*erase_sectors)(uint32_t, uint32_t),
-  bool(*erase_all_sectors)(void),
-  uint8_t(*compute_crc8)(uint8_t *, uint8_t)>
+#if (__cplusplus >= 202002L) || (_MSVC_LANG >= 202002L)
+template<func_types::read_write_t read_bytes,
+  func_types::read_write_t write_bytes,
+  func_types::erase_sectors_t erase_sectors,
+  func_types::erase_all_sectors_t erase_all_sectors,
+  func_types::compute_crc8_t compute_crc8>
+requires (read_bytes != nullptr) &&
+  (write_bytes != nullptr) &&
+  (erase_sectors != nullptr) &&
+  (erase_all_sectors != nullptr) &&
+  (compute_crc8 != nullptr)
+#else
+template<func_types::read_write_t read_bytes,
+  func_types::read_write_t write_bytes,
+  func_types::erase_sectors_t erase_sectors,
+  func_types::erase_all_sectors_t erase_all_sectors,
+  func_types::compute_crc8_t compute_crc8,
+  std::enable_if_t<(
+    (read_bytes != nullptr) &&
+    (write_bytes != nullptr) &&
+    (erase_sectors != nullptr) &&
+    (erase_all_sectors != nullptr) &&
+    (compute_crc8 != nullptr)
+  ), int> = 0
+>
+#endif
 struct StructStorage {
   // r/w operations
   Storage::rw_status read_data_structure(
