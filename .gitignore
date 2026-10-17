@@ -2,8 +2,8 @@
 *.o
 *.out
 *.exe
-/build
-.vscode/tasks.json
+build/
+.vscode/
 
 CMakeLists.txt.user
 CMakeCache.txt
